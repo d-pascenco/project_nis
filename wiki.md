@@ -236,6 +236,12 @@ git clone https://github.com/d-pascenco/nextpath-ai-navigator.git
 ```
 Гит попросит логин и токен.
 
+Проект сайта находится в следующей директории:
+
+```
+/home/ubuntu/nextpath-ai-navigator
+```
+
 ### 7.2 Заходим в скаченеую папку, устанавливаем зависимости (библиотеки из [package.json](https://github.com/d-pascenco/nextpath-ai-navigator/blob/main/package.json)) в node_modules)
 
 ```bash
