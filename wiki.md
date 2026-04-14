@@ -97,14 +97,13 @@ ssh -i C:\путь\к\ssh-ключу\ssh-key-2026-04-12.key ubuntu@публич�
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 @         WARNING: UNPROTECTED PRIVATE KEY FILE!          @
 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-Permissions 0644 for '/home/pd/Downloads/ssh-key-2026-04-12.key' are too open.
+Permissions 0644 for '/home/что-то там/ssh-key-2026-04-12.key' are too open.
 This private key will be ignored.
-Load key "/home/pd/Downloads/ssh-key-2026-04-12.key": bad permissions
+Load key "/home/что-то там/ssh-key-2026-04-12.key": bad permissions
 ubuntu@адрес_хоста: Permission denied (publickey).
 ```
 - Решение:
 Были изменены права на приватный ключ:
-
 ```bash
 chmod 600 /путь к ключу/ssh-key-2026-04-12.key
 ```
