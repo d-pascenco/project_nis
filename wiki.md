@@ -331,7 +331,6 @@ Cloudflare использовался для:
 - реализация backend
 - подключение backend к frontend
 - настройка production-конфигурации nginx
-- настройка HTTPS
 - автоматизация деплоя
 - добавление Docker / Docker Compose
 - оформление CI/CD
