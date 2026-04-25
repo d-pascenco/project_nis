@@ -32,8 +32,9 @@
 | 0.0.0.0/0  | TCP      | 22               | SSH (для команды)|
 | 0.0.0.0/0  | TCP      | 80               | HTTP             |
 | 0.0.0.0/0  | TCP      | 443              | HTTPS            |
+| 0.0.0.0/0  | TCP      | 5432             | postgres db      |
 
-В дальнейшем на хосте открыть нужные порты можно через следюущие команды: 
+В дальнейшем на хосте открыть вышеперечисленные порты можно через следюущие команды: 
 ```bash
 sudo iptables -I INPUT -p tcp --dport 80 -j ACCEPT
 ```
@@ -325,7 +326,133 @@ Cloudflare использовался для:
 - подключён Cloudflare
 - доступ к серверу передан команде через SSH-ключ
 
-## 10. Что дальше планируется добавить
+## 10. Установка и настройка базы данных
+
+### 10.1 Установка
+Выбран postgres движок.
+Установка:
+```bash
+sudo apt install postgresql postgresql-contrib -y
+```
+Проверяем, что сервис запущен:
+```bash
+sudo systemctl status postgresql
+```
+Команда входа в СУБД из консоли:
+```bash
+sudo -u postgres psql
+```
+### 10.2 Создание базы данных и ролей
+Создание базы:
+```sql
+CREATE DATABASE nextpath;
+```
+Создание ролей:
+```sql
+-- backend (postgres юзер, под которым бэк будет выполнять действия)
+CREATE USER nextpath_app WITH PASSWORD 'strong_password';
+
+-- юзер для команды (создан один юзер, чтобы проще было управлять доступом)
+CREATE USER nextpath_admin WITH PASSWORD 'admin_password';
+ALTER USER nextpath_admin WITH SUPERUSER;
+```
+Выдача доступа:
+```sql
+GRANT ALL PRIVILEGES ON DATABASE nextpath TO nextpath_app;
+GRANT ALL PRIVILEGES ON DATABASE nextpath TO nextpath_admin;
+```
+### 10.3 Подключение к базе
+Помимо программ клиентов для подключения к базе, можно подключаться через консоль:
+```bash
+\c nextpath
+```
+#### 10.3.1 Подключение из SQL клиента
+
+Параметры:
+```text
+Host: публичный адрес нашего инстанса (выдан команде)
+Port: 5432
+Database: nextpath
+User: nextpath_app
+Password: наш пароль (выдан команде)
+```
+
+### 10.4 Настройка прав
+
+Убираем superuser у backend:
+```sql
+ALTER USER nextpath_app NOSUPERUSER;
+```
+Доступ к схеме:
+```sql
+GRANT USAGE ON SCHEMA public TO nextpath_app;
+```
+Доступ к таблицам:
+sql```
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON ALL TABLES IN SCHEMA public
+TO nextpath_app;
+```
+Права по умолчанию:
+```sql
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT SELECT, INSERT, UPDATE, DELETE
+ON TABLES TO nextpath_app;
+```
+### 10.5 Разрешение внешних подключений
+
+По умолчанию PostgreSQL слушает только localhost.
+
+Проверяем:
+```bash
+sudo ss -tulnp | grep 5432
+```
+Если выдает 127.0.0.1:5432 нужно изменить конфиг.
+
+#### 10.5.1 postgresql.conf
+
+При работе из Arch может прийти ошибка nano (xterm-kitty). Исправить ее можно, задав временно `export TERM=xterm`
+
+Редактируем конфиг.
+Открываем:
+```bash
+sudo nano /etc/postgresql/*/main/postgresql.conf
+```
+Находим строку `#listen_addresses = 'localhost'`
+Заменяем на `listen_addresses = '*'`
+
+#### 10.5.2 pg_hba.conf
+
+```bash
+sudo nano /etc/postgresql/*/main/pg_hba.conf
+```
+Добавить правила:
+```text
+host    nextpath    nextpath_app    0.0.0.0/0    md5
+host    nextpath    nextpath_admin  0.0.0.0/0    md5
+```
+И перезапускаем сервис:
+```bash
+sudo systemctl restart postgresql
+```
+Проверяем:
+```bash
+sudo ss -tulnp | grep 5432
+```
+Ожидаемый результат `0.0.0.0:5432`.
+
+
+
+
+
+
+
+
+
+
+
+
+## 00. Что дальше планируется добавить
 Следующие этапы проекта:
 - подключение базы данных
 - реализация backend
