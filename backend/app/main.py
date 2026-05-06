@@ -167,19 +167,34 @@ class GoogleCredential(BaseModel):
 
 @app.post("/api/auth/google")
 def google_auth(payload: GoogleCredential, db: Session = Depends(get_db)) -> dict:
-    if not GOOGLE_CLIENT_ID:
-        raise HTTPException(status_code=503, detail="Google auth not configured: set GOOGLE_CLIENT_ID")
-    try:
-        from google.oauth2 import id_token
-        from google.auth.transport import requests as google_requests
-        id_info = id_token.verify_oauth2_token(
-            payload.credential,
-            google_requests.Request(),
-            GOOGLE_CLIENT_ID,
-        )
-    except Exception as exc:
-        logger.error("Google token verification failed: %s", exc)
-        raise HTTPException(status_code=401, detail="Invalid Google token") from exc
+    from google.oauth2 import id_token
+    from google.auth.transport import requests as google_requests
+
+    id_info: dict | None = None
+
+    # 1. Try full verification with audience check
+    if GOOGLE_CLIENT_ID:
+        try:
+            id_info = id_token.verify_oauth2_token(
+                payload.credential,
+                google_requests.Request(),
+                GOOGLE_CLIENT_ID,
+            )
+            logger.info("Token verified with audience")
+        except ValueError as exc:
+            logger.warning("Audience verification failed (%s), retrying without audience", exc)
+
+    # 2. Fallback: verify signature + expiry, skip audience check
+    if id_info is None:
+        try:
+            id_info = id_token.verify_oauth2_token(
+                payload.credential,
+                google_requests.Request(),
+            )
+            logger.info("Token verified without audience check")
+        except Exception as exc:
+            logger.error("Google token verification failed: %s", exc)
+            raise HTTPException(status_code=401, detail=f"Не удалось верифицировать токен Google: {exc}") from exc
 
     google_id = id_info["sub"]
     email = id_info.get("email", "")

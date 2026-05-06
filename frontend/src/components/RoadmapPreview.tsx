@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Clock, Download, Share2, Sparkles, Loader2, UserPlus, ExternalLink, ChevronRight,
+  Clock, Download, Share2, Sparkles, Loader2, ExternalLink, ChevronRight,
 } from "lucide-react";
 import { RoadmapData } from "@/pages/Onboarding";
 import { setToken, setUser, isAuthenticated, authHeaders } from "@/lib/auth";
@@ -173,7 +173,6 @@ export const RoadmapPreview = ({
   userData, roadmapData, isLoading, hideActions, formSnapshot,
 }: RoadmapPreviewProps) => {
   const navigate = useNavigate();
-  const [showSignIn, setShowSignIn] = useState(false);
   const [showResources, setShowResources] = useState<number | null>(null);
   const [savingRoadmap, setSavingRoadmap] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -207,13 +206,10 @@ export const RoadmapPreview = ({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ credential: resp.credential }),
       });
-      if (!authRes.ok) {
-        const err = await authRes.json().catch(() => ({}));
-        throw new Error(err.detail || `Ошибка ${authRes.status}`);
-      }
-      const { token, user } = await authRes.json();
-      setToken(token);
-      setUser(user);
+      const body = await authRes.json().catch(() => ({}));
+      if (!authRes.ok) throw new Error(body.detail || `Ошибка ${authRes.status}`);
+      setToken(body.token);
+      setUser(body.user);
       if (roadmapData) {
         await fetch("/api/me/roadmap", {
           method: "POST",
@@ -221,7 +217,6 @@ export const RoadmapPreview = ({
           body: JSON.stringify({ roadmap: roadmapData }),
         });
       }
-      setShowSignIn(false);
       navigate("/profile");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Ошибка авторизации";
@@ -370,14 +365,31 @@ export const RoadmapPreview = ({
           </div>
         )}
 
-        {/* Register CTA */}
+        {/* Register CTA — Google button inline, no extra dialog */}
         {!hideActions && !isLoading && !isAuthenticated() && (
-          <div className="border border-primary/20 rounded-2xl p-6 bg-primary/5 text-center space-y-3">
+          <div className="border border-primary/20 rounded-2xl p-6 bg-primary/5 text-center space-y-4">
             <p className="font-medium text-foreground">Сохраните план и отслеживайте прогресс</p>
             <p className="text-sm text-muted-foreground">Войдите через Google — займёт 10 секунд</p>
-            <Button variant="hero" onClick={() => { setAuthError(null); setShowSignIn(true); }}>
-              <UserPlus className="w-4 h-4" /> Войти и сохранить план
-            </Button>
+            {savingRoadmap ? (
+              <div className="flex items-center justify-center gap-2 text-muted-foreground py-2">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span className="text-sm">Сохраняем план...</span>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => setAuthError("Не удалось войти через Google. Попробуйте ещё раз.")}
+                  locale="ru"
+                  text="signin_with"
+                  shape="rectangular"
+                  size="large"
+                />
+                {authError && (
+                  <p className="text-sm text-destructive mt-1">{authError}</p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -400,25 +412,6 @@ export const RoadmapPreview = ({
         </DialogContent>
       </Dialog>
 
-      {/* Google sign-in modal */}
-      <Dialog open={showSignIn} onOpenChange={setShowSignIn}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Войти через Google</DialogTitle>
-          </DialogHeader>
-          {savingRoadmap ? (
-            <div className="flex items-center justify-center py-8 gap-3 text-muted-foreground">
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
-              Сохраняем план...
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-4 py-4">
-              <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setAuthError("Не удалось войти через Google")} locale="ru" />
-              {authError && <p className="text-sm text-destructive text-center">{authError}</p>}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </>
   );
 };
