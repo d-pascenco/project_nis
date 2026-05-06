@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS user_forms (
     university VARCHAR(255),
     specialization VARCHAR(255),
     years_experience INTEGER CHECK (years_experience IS NULL OR (years_experience >= 0 AND years_experience <= 80)),
-    current_role VARCHAR(255),
+    current_job_role VARCHAR(255),
     cv_summary TEXT,
     
     target_profession VARCHAR(255),
