@@ -82,10 +82,7 @@ export const SkillsStep = ({ data, onChange }: SkillsStepProps) => {
   };
 
   return (
-    <FormCard
-      title="Навыки и компетенции"
-      description="Укажите ваши текущие навыки и знание языков"
-    >
+    <FormCard title="Навыки и компетенции">
       <div className="space-y-8">
         {/* Technical Skills */}
         <div className="space-y-4">

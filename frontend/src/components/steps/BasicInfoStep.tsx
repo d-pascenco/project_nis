@@ -16,15 +16,12 @@ interface BasicInfoStepProps {
 
 export const BasicInfoStep = ({ data, onChange }: BasicInfoStepProps) => {
   return (
-    <FormCard
-      title="Основная информация"
-      description="Расскажите о себе, чтобы мы могли создать персонализированный путь развития"
-    >
+    <FormCard title="Основная информация">
       <div className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="fullName" className="flex items-center gap-2">
             <User className="w-4 h-4 text-primary" />
-            Полное имя
+            Полное имя <span className="text-destructive">*</span>
           </Label>
           <Input
             id="fullName"
@@ -67,7 +64,7 @@ export const BasicInfoStep = ({ data, onChange }: BasicInfoStepProps) => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="status">Текущий статус</Label>
+          <Label htmlFor="status">Текущий статус <span className="text-destructive">*</span></Label>
           <Select
             value={data.currentStatus}
             onValueChange={(value) => onChange({ currentStatus: value })}

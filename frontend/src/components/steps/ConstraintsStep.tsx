@@ -21,10 +21,7 @@ interface ConstraintsStepProps {
 
 export const ConstraintsStep = ({ data, onChange }: ConstraintsStepProps) => {
   return (
-    <FormCard
-      title="Ограничения и предпочтения"
-      description="Учтём ваши реальные возможности при построении дорожной карты"
-    >
+    <FormCard title="Ограничения и предпочтения">
       <div className="space-y-8">
         {/* Time availability */}
         <div className="space-y-4">

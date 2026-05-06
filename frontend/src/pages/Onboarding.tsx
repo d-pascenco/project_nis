@@ -88,9 +88,20 @@ const Onboarding = () => {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState(false);
 
   const updateFormData = (data: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));
+    setValidationError(false);
+  };
+
+  const isCurrentStepValid = () => {
+    switch (currentStep) {
+      case 0: return !!formData.fullName.trim() && !!formData.currentStatus;
+      case 1: return !!formData.education;
+      case 2: return !!formData.targetProfession && !!formData.timeline;
+      default: return true;
+    }
   };
 
   const submitForm = async () => {
@@ -111,6 +122,11 @@ const Onboarding = () => {
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
+      if (!isCurrentStepValid()) {
+        setValidationError(true);
+        return;
+      }
+      setValidationError(false);
       setCurrentStep((prev) => prev + 1);
     } else {
       submitForm();
@@ -118,6 +134,7 @@ const Onboarding = () => {
   };
 
   const handleBack = () => {
+    setValidationError(false);
     if (showRoadmap) {
       setShowRoadmap(false);
     } else if (currentStep > 0) {
@@ -226,6 +243,13 @@ const Onboarding = () => {
 
             {/* Form content */}
             <div className="mb-10">{renderStep()}</div>
+
+            {/* Validation error */}
+            {validationError && (
+              <p className="text-sm text-destructive text-center mb-4">
+                Заполните обязательные поля, отмеченные *
+              </p>
+            )}
 
             {/* Navigation buttons */}
             <div className="flex items-center justify-between">

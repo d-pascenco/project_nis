@@ -19,15 +19,12 @@ interface EducationStepProps {
 
 export const EducationStep = ({ data, onChange }: EducationStepProps) => {
   return (
-    <FormCard
-      title="Образование и опыт"
-      description="Информация о вашем образовании и профессиональном опыте"
-    >
+    <FormCard title="Образование и опыт">
       <div className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="education" className="flex items-center gap-2">
             <GraduationCap className="w-4 h-4 text-primary" />
-            Уровень образования
+            Уровень образования <span className="text-destructive">*</span>
           </Label>
           <Select
             value={data.education}

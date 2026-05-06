@@ -34,15 +34,12 @@ export const GoalsStep = ({ data, onChange }: GoalsStepProps) => {
   };
 
   return (
-    <FormCard
-      title="Цели и интересы"
-      description="К чему вы стремитесь в своей карьере?"
-    >
+    <FormCard title="Цели и интересы">
       <div className="space-y-6">
         <div className="space-y-2">
           <Label htmlFor="targetProfession" className="flex items-center gap-2">
             <Target className="w-4 h-4 text-accent" />
-            Желаемая профессия / роль
+            Желаемая профессия / роль <span className="text-destructive">*</span>
           </Label>
           <Select
             value={data.targetProfession}
@@ -97,7 +94,7 @@ export const GoalsStep = ({ data, onChange }: GoalsStepProps) => {
           <div className="space-y-2">
             <Label htmlFor="timeline" className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-accent" />
-              Желаемый срок достижения цели
+              Желаемый срок достижения цели <span className="text-destructive">*</span>
             </Label>
             <Select
               value={data.timeline}

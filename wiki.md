@@ -454,10 +454,8 @@ sudo ss -tulnp | grep 5432
 
 ## 00. Что дальше планируется добавить
 Следующие этапы проекта:
-- реализация backend
-- подключение backend к frontend
-- настройка production-конфигурации nginx
-- автоматизация деплоя
+- AI-генерация персонализированного роудмапа через Claude API
+- валидация форм на фронтенде
 - добавление Docker / Docker Compose
 - оформление CI/CD
 
@@ -764,3 +762,175 @@ sudo systemctl status nextpath-backend --no-pager || true
 ### 12.6 Правильный production repo: project_nis
 
 Уточнение: production monorepo находится в `https://github.com/d-pascenco/project_nis`, а не в старом frontend-only `nextpath-ai-navigator`. На хосте рабочая папка должна быть `/home/ubuntu/project_nis`. Старую папку `/home/ubuntu/nextpath-ai-navigator` нужно удалить или архивировать как backup. Для точной миграции добавлен документ `docs/MIGRATE_HOST_TO_PROJECT_NIS.md`.
+
+## 13. Миграция хоста на monorepo project_nis
+
+После выноса бэкенда в репозиторий проект был реорганизован в monorepo `project_nis`, объединяющий frontend и backend. Старый репозиторий `nextpath-ai-navigator` больше не используется как рабочий.
+
+### 13.1 Рабочие папки на хосте
+
+```text
+/home/ubuntu/project_nis             ← рабочая копия monorepo
+/home/ubuntu/nextpath-ai-navigator   ← устаревший frontend-only clone
+```
+
+Репозиторий:
+```text
+https://github.com/d-pascenco/project_nis.git
+```
+
+### 13.2 Миграция на хосте
+
+```bash
+cd /home/ubuntu
+
+# сохраняем старый каталог как backup
+mv /home/ubuntu/nextpath-ai-navigator /home/ubuntu/nextpath-ai-navigator.old.$(date +%F)
+
+# клонируем monorepo
+git clone https://github.com/d-pascenco/project_nis.git /home/ubuntu/project_nis
+cd /home/ubuntu/project_nis
+
+# создаём .env из шаблона
+cp .env.example .env
+nano .env
+```
+
+### 13.3 Обновление systemd-сервиса
+
+После переноса репозитория обновляем пути в сервисе:
+
+```ini
+[Service]
+WorkingDirectory=/home/ubuntu/project_nis/backend
+EnvironmentFile=/home/ubuntu/project_nis/.env
+ExecStart=/home/ubuntu/project_nis/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart nextpath-backend
+```
+
+### 13.4 Деплой обновлений
+
+```bash
+cd ~/project_nis
+git pull --ff-only
+bash scripts/deploy_host.sh
+```
+
+Скрипт `scripts/deploy_host.sh` собирает frontend, копирует `dist/` в `/var/www/html`, обновляет Python venv, применяет SQL и перезапускает сервис.
+
+### 13.5 Ошибка при git pull: незакоммиченные изменения
+
+Если `git pull --ff-only` падает с ошибкой:
+
+```text
+error: Your local changes to the following files would be overwritten by merge:
+        backend/sql/001_create_user_forms.sql
+Please commit your changes or stash them before you merge.
+Aborting
+```
+
+На хосте есть незакоммиченные изменения. Решение:
+
+```bash
+git stash
+git pull --ff-only
+bash scripts/deploy_host.sh
+```
+
+## 14. Подключение фронтенда к бэкенду
+
+### 14.1 Проблема
+
+После реализации backend кнопка «Создать карту» на последнем шаге формы не отправляла никаких данных. В `src/pages/Onboarding.tsx` функция `handleNext()` просто вызывала `setShowRoadmap(true)` без fetch-запроса.
+
+Проверка подтвердила — в задеплоенном JS-бандле строка `api/forms` не встречается:
+
+```bash
+grep -c 'api/forms' /var/www/html/assets/*.js
+# 0
+```
+
+### 14.2 Добавление fetch
+
+В `Onboarding.tsx` добавлена асинхронная функция `submitForm()`, которая отправляет данные формы перед показом роудмапа:
+
+```ts
+const submitForm = async () => {
+  setIsSubmitting(true);
+  try {
+    await fetch("/api/forms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+  } catch {
+    // не блокируем пользователя при сетевой ошибке
+  } finally {
+    setIsSubmitting(false);
+  }
+  setShowRoadmap(true);
+};
+```
+
+### 14.3 Ошибка 422: пустые строки в числовых полях
+
+После добавления fetch форма стала отправляться, но backend возвращал `422 Unprocessable Entity`. Причина: поля `age` и `yearsExperience` в `FormData` имеют тип `string` и при пустом значении отправляются как `""`. Backend ожидает `int | None`, и Pydantic v2 не может сконвертировать пустую строку в число.
+
+Исправление в `backend/app/schemas.py` — добавлен валидатор:
+
+```python
+@field_validator("age", "years_experience", "hours_per_week", mode="before")
+@classmethod
+def coerce_empty_string_to_none(cls, value: Any) -> Any:
+    if value == "" or value is None:
+        return None
+    return value
+```
+
+### 14.4 Диагностика production
+
+Последовательность диагностики при проблемах с API:
+
+```bash
+# статус сервиса и логи
+sudo systemctl status nextpath-backend --no-pager
+journalctl -u nextpath-backend -n 50 --no-pager
+
+# бэкенд слушает порт
+sudo ss -tulnp | grep 8000
+
+# health check напрямую и через nginx
+curl -s http://127.0.0.1:8000/api/health
+curl -s https://nextpath.su/api/health
+
+# изменения попали в сборку
+grep -c 'api/forms' /var/www/html/assets/*.js
+
+# данные в базе
+psql -h 127.0.0.1 -U nextpath_app -d nextpath -c \
+  "SELECT id, full_name, target_profession, created_at FROM user_forms ORDER BY id DESC LIMIT 5;"
+```
+
+## 15. Валидация формы на фронтенде
+
+### 15.1 Обязательные поля
+
+Не все поля формы обязательны — только те, без которых нельзя построить роудмап:
+
+| Шаг | Обязательные поля |
+|-----|-------------------|
+| О вас | Полное имя, Текущий статус |
+| Образование | Уровень образования |
+| Цели | Желаемая профессия, Срок достижения |
+| Навыки | — |
+| Ограничения | — |
+
+### 15.2 Реализация
+
+В `Onboarding.tsx` добавлена функция `isCurrentStepValid()`, которая проверяет наличие обязательных полей для текущего шага. При нажатии «Далее» с незаполненными полями переход не происходит, появляется сообщение «Заполните обязательные поля, отмеченные *».
+
+Обязательные поля в шагах помечены `*` красным цветом. Сообщение об ошибке сбрасывается при изменении любого поля или при переходе назад.
