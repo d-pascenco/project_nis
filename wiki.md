@@ -680,3 +680,55 @@ curl https://nextpath.su/api/health
 ```
 
 То есть PostgreSQL должен быть доступен backend-у через `127.0.0.1:5432`, а внешний порт `5432` лучше закрыть, если он больше не нужен команде для прямого подключения из SQL-клиентов.
+
+## 12. Деплой нового monorepo на существующий хост
+
+После переноса frontend в этот репозиторий проект должен деплоиться как monorepo:
+
+```text
+nextpath-ai-navigator/
+├── frontend/
+├── backend/
+├── docs/DEPLOY_PRODUCTION.md
+└── scripts/deploy_host.sh
+```
+
+Подробный production-runbook лежит в `docs/DEPLOY_PRODUCTION.md`. Короткая схема такая:
+
+1. Сначала на хосте сделать backup текущего `/var/www/html` или `/var/www/nextpath`, а также `/etc/nginx`.
+2. Не удалять старый сайт сразу: старую папку repo переименовать в `*.old.<date>`.
+3. Клонировать новый repo в `/home/ubuntu/nextpath-ai-navigator`.
+4. Создать `backend/.env` с реальным `DATABASE_URL`.
+5. Создать/проверить systemd-service `nextpath-backend`.
+6. Добавить в Nginx reverse proxy `/api/` на `127.0.0.1:8000` и SPA fallback `try_files $uri $uri/ /index.html`.
+7. Запустить `bash scripts/deploy_host.sh`.
+8. Проверить `https://nextpath.su/onboarding` и `https://nextpath.su/api/health`.
+
+### 12.1 Команды диагностики перед деплоем
+
+Если нужно понять текущее состояние хоста перед заменой сайта, выполнить по SSH:
+
+```bash
+whoami
+hostname -I
+sudo nginx -t
+sudo systemctl status nginx --no-pager
+sudo find /etc/nginx/sites-enabled -maxdepth 1 -type f -print -exec sed -n '1,220p' {} \;
+sudo find /var/www -maxdepth 3 -type f \( -name 'index.html' -o -name '*.conf' \) -print
+find /home/ubuntu -maxdepth 2 -type d \( -name '.git' -o -name 'backend' -o -name 'frontend' -o -name 'nextpath*' \) -print
+node -v || true
+npm -v || true
+python3 --version
+sudo systemctl status postgresql --no-pager
+sudo ss -tulnp | grep -E ':(80|443|5432|8000)\b' || true
+sudo systemctl status nextpath-backend --no-pager || true
+```
+
+### 12.2 Как настроить push с локального repo на production
+
+Есть два варианта:
+
+- проще: пушить в GitHub, а на хосте делать `git pull --ff-only && bash scripts/deploy_host.sh`;
+- удобнее: создать bare repo `/home/ubuntu/git/nextpath.git` на хосте и добавить локальный remote `prod`, чтобы `git push prod main` запускал deploy hook.
+
+Подробные команды для обоих вариантов описаны в `docs/DEPLOY_PRODUCTION.md`.
