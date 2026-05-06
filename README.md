@@ -8,7 +8,8 @@ Monorepo проекта NextPath.
 - `backend/` — FastAPI API для onboarding-формы и записи данных в PostgreSQL.
 - `.env.example` — общий шаблон секретов для frontend/backend; реальный `.env` игнорируется Git.
 - `docs/DEPLOY_PRODUCTION.md` — общая инструкция по безопасному деплою на Oracle Ubuntu.
-- `docs/CURRENT_HOST_NEXT_STEPS.md` — конкретный план для текущего хоста `mnad-projest` по твоему диагностическому выводу.
+- `docs/CURRENT_HOST_NEXT_STEPS.md` — конкретный план для текущего хоста `mnad-projest` по диагностическому выводу.
+- `docs/HOST_REPO_REPLACEMENT.md` — recovery-план, если на хост случайно снова склонирован старый frontend-only repo без `backend/` и `scripts/`.
 - `scripts/deploy_host.sh` — helper-скрипт для сборки frontend, обновления backend и reload Nginx на production-хосте.
 - `wiki.md` — история настройки инфраструктуры и текущий workflow.
 
@@ -44,4 +45,5 @@ bash scripts/deploy_host.sh
 Подробные инструкции:
 
 - общий runbook: [`docs/DEPLOY_PRODUCTION.md`](docs/DEPLOY_PRODUCTION.md);
-- конкретно для текущего хоста: [`docs/CURRENT_HOST_NEXT_STEPS.md`](docs/CURRENT_HOST_NEXT_STEPS.md).
+- конкретно для текущего хоста: [`docs/CURRENT_HOST_NEXT_STEPS.md`](docs/CURRENT_HOST_NEXT_STEPS.md);
+- если на хосте снова оказался frontend-only clone: [`docs/HOST_REPO_REPLACEMENT.md`](docs/HOST_REPO_REPLACEMENT.md).

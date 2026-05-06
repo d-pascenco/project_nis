@@ -11,6 +11,12 @@
 - backend-service `nextpath-backend` еще не создан;
 - PostgreSQL сейчас слушает `0.0.0.0:5432` и `[::]:5432`.
 
+## 0. Важно: сначала убедиться, что на GitHub уже monorepo
+
+Если после `git clone https://github.com/d-pascenco/nextpath-ai-navigator.git` в `/home/ubuntu/nextpath-ai-navigator` видны только `package.json`, `src`, `public`, `vite.config.ts`, значит на GitHub все еще старый frontend-only repo. В таком состоянии `scripts/deploy_host.sh` отсутствует, и backend не появится.
+
+Сначала запушь новый локальный monorepo в GitHub или клонируй правильный URL. Подробный recovery-план для этой ситуации лежит в `docs/HOST_REPO_REPLACEMENT.md`.
+
 ## 1. Nginx уже найден
 
 По свежему выводу найден точный конфиг сайта:

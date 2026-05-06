@@ -752,3 +752,10 @@ sudo systemctl status nextpath-backend --no-pager || true
 По последней проверке Nginx точный файл сайта: `/etc/nginx/sites-enabled/nextpath.su`. В нем уже есть SSL от Certbot, `server_name nextpath.su www.nextpath.su`, `root /var/www/html` и SPA fallback. Правка минимальная: добавить `location /api/` на `http://127.0.0.1:8000` перед текущим `location /`.
 
 Для секретов добавлен общий root `.env`: копируем `.env.example` в `.env` в корне repo. `.env` игнорируется Git, поэтому его можно держать локально и на хосте, а в репозиторий коммитить только безопасные изменения. Backend также поддерживает `backend/.env` как локальный override, но production-инструкция использует root `.env`.
+
+
+### 12.5 Ошибка: на хост снова склонирован frontend-only repo
+
+Если после `git clone https://github.com/d-pascenco/nextpath-ai-navigator.git` на хосте в папке есть только `package.json`, `src`, `public`, `vite.config.ts`, но нет `backend/`, `scripts/`, `docs/`, значит GitHub по этому URL еще содержит старый frontend-only репозиторий. Нужно сначала запушить новый monorepo в GitHub или клонировать правильный URL. Для этой ситуации добавлен отдельный документ `docs/HOST_REPO_REPLACEMENT.md`.
+
+Ошибка backup `Permission denied` для `pg_dump > /home/ubuntu/backups/...sql` связана с тем, что redirect выполняется от пользователя `ubuntu`, а папка/файл создан через `sudo`. Быстрое исправление: `sudo chown -R ubuntu:ubuntu /home/ubuntu/backups`, затем повторить `pg_dump`.
