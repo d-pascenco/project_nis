@@ -55,10 +55,12 @@ source "$BACKEND_DIR/venv/bin/activate"
 pip install --upgrade pip
 pip install -r requirements.txt
 
-if command -v psql >/dev/null 2>&1 && [ -n "${DATABASE_URL:-}" ] && [ -f "$BACKEND_DIR/sql/001_create_user_forms.sql" ]; then
-  psql "$DATABASE_URL" -f "$BACKEND_DIR/sql/001_create_user_forms.sql" || true
+if command -v psql >/dev/null 2>&1 && [ -n "${DATABASE_URL:-}" ]; then
+  for sql_file in "$BACKEND_DIR"/sql/[0-9]*.sql; do
+    [ -f "$sql_file" ] && psql "$DATABASE_URL" -f "$sql_file" || true
+  done
 else
-  echo "WARN: DATABASE_URL, psql, or SQL file not found; skipping SQL migration."
+  echo "WARN: DATABASE_URL or psql not found; skipping SQL migrations."
 fi
 
 if systemctl list-unit-files | grep -q "^$SERVICE_NAME.service"; then
