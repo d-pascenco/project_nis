@@ -6,16 +6,14 @@
 - OS: Ubuntu 24.04.4 LTS;
 - Nginx активен, `nginx -t` проходит;
 - текущий статический сайт лежит в `/var/www/html/index.html`;
-- старый repo-каталог есть в `/home/ubuntu/nextpath-ai-navigator`;
+- старый frontend-only repo-каталог есть в `/home/ubuntu/nextpath-ai-navigator`; новая рабочая папка должна быть `/home/ubuntu/project_nis`;
 - Node.js `v18.19.1`, npm `9.2.0`, Python `3.12.3`, PostgreSQL `16.13` уже установлены;
 - backend-service `nextpath-backend` еще не создан;
 - PostgreSQL сейчас слушает `0.0.0.0:5432` и `[::]:5432`.
 
 ## 0. Важно: сначала убедиться, что на GitHub уже monorepo
 
-Если после `git clone https://github.com/d-pascenco/nextpath-ai-navigator.git` в `/home/ubuntu/nextpath-ai-navigator` видны только `package.json`, `src`, `public`, `vite.config.ts`, значит на GitHub все еще старый frontend-only repo. В таком состоянии `scripts/deploy_host.sh` отсутствует, и backend не появится.
-
-Сначала запушь новый локальный monorepo в GitHub или клонируй правильный URL. Подробный recovery-план для этой ситуации лежит в `docs/HOST_REPO_REPLACEMENT.md`.
+Правильный monorepo находится в `https://github.com/d-pascenco/project_nis.git` и должен жить на хосте в `/home/ubuntu/project_nis`. Старый `/home/ubuntu/nextpath-ai-navigator` — это frontend-only clone, его больше не используем как рабочую папку. Подробный план замены лежит в `docs/MIGRATE_HOST_TO_PROJECT_NIS.md`.
 
 ## 1. Nginx уже найден
 
@@ -42,19 +40,19 @@ pg_dump -h 127.0.0.1 -U nextpath_app -d nextpath --schema-only > /home/ubuntu/ba
 
 ```bash
 cd /home/ubuntu
-mv /home/ubuntu/nextpath-ai-navigator /home/ubuntu/nextpath-ai-navigator.old.$(date +%F-%H%M%S)
-git clone https://github.com/d-pascenco/nextpath-ai-navigator.git /home/ubuntu/nextpath-ai-navigator
-cd /home/ubuntu/nextpath-ai-navigator
+mv /home/ubuntu/project_nis /home/ubuntu/project_nis.old.$(date +%F-%H%M%S)
+git clone https://github.com/d-pascenco/project_nis.git /home/ubuntu/project_nis
+cd /home/ubuntu/project_nis
 ```
 
 Если репозиторий приватный, GitHub попросит token или нужно будет настроить SSH deploy key.
 
 ## 4. Создать общий root `.env` для всех компонентов
 
-Секреты теперь лучше держать в одном файле `/home/ubuntu/nextpath-ai-navigator/.env`. Он добавлен в `.gitignore`, поэтому не будет коммититься.
+Секреты теперь лучше держать в одном файле `/home/ubuntu/project_nis/.env`. Он добавлен в `.gitignore`, поэтому не будет коммититься.
 
 ```bash
-cd /home/ubuntu/nextpath-ai-navigator
+cd /home/ubuntu/project_nis
 cp .env.example .env
 nano .env
 ```
@@ -82,9 +80,9 @@ After=network.target postgresql.service
 [Service]
 User=ubuntu
 Group=ubuntu
-WorkingDirectory=/home/ubuntu/nextpath-ai-navigator/backend
-EnvironmentFile=/home/ubuntu/nextpath-ai-navigator/.env
-ExecStart=/home/ubuntu/nextpath-ai-navigator/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+WorkingDirectory=/home/ubuntu/project_nis/backend
+EnvironmentFile=/home/ubuntu/project_nis/.env
+ExecStart=/home/ubuntu/project_nis/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=5
 
@@ -139,7 +137,7 @@ sudo systemctl reload nginx
 ## 7. Первый деплой
 
 ```bash
-cd /home/ubuntu/nextpath-ai-navigator
+cd /home/ubuntu/project_nis
 bash scripts/deploy_host.sh
 ```
 
@@ -181,7 +179,7 @@ git push origin main
 На хосте:
 
 ```bash
-cd /home/ubuntu/nextpath-ai-navigator
+cd /home/ubuntu/project_nis
 git pull --ff-only
 bash scripts/deploy_host.sh
 ```
@@ -192,14 +190,14 @@ bash scripts/deploy_host.sh
 
 ```bash
 mkdir -p /home/ubuntu/git
-git init --bare /home/ubuntu/git/nextpath.git
-cat > /home/ubuntu/git/nextpath.git/hooks/post-receive <<'EOF'
+git init --bare /home/ubuntu/git/project_nis.git
+cat > /home/ubuntu/git/project_nis.git/hooks/post-receive <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
 BRANCH="main"
-WORK_TREE="/home/ubuntu/nextpath-ai-navigator"
-GIT_DIR="/home/ubuntu/git/nextpath.git"
+WORK_TREE="/home/ubuntu/project_nis"
+GIT_DIR="/home/ubuntu/git/project_nis.git"
 
 while read oldrev newrev refname; do
   if [ "$refname" = "refs/heads/$BRANCH" ]; then
@@ -210,13 +208,13 @@ while read oldrev newrev refname; do
   fi
 done
 EOF
-chmod +x /home/ubuntu/git/nextpath.git/hooks/post-receive
+chmod +x /home/ubuntu/git/project_nis.git/hooks/post-receive
 ```
 
 Локально:
 
 ```bash
-git remote add prod ubuntu@YOUR_SERVER_PUBLIC_IP:/home/ubuntu/git/nextpath.git
+git remote add prod ubuntu@YOUR_SERVER_PUBLIC_IP:/home/ubuntu/git/project_nis.git
 git push prod main
 ```
 

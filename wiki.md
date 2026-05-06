@@ -759,3 +759,8 @@ sudo systemctl status nextpath-backend --no-pager || true
 Если после `git clone https://github.com/d-pascenco/nextpath-ai-navigator.git` на хосте в папке есть только `package.json`, `src`, `public`, `vite.config.ts`, но нет `backend/`, `scripts/`, `docs/`, значит GitHub по этому URL еще содержит старый frontend-only репозиторий. Нужно сначала запушить новый monorepo в GitHub или клонировать правильный URL. Для этой ситуации добавлен отдельный документ `docs/HOST_REPO_REPLACEMENT.md`.
 
 Ошибка backup `Permission denied` для `pg_dump > /home/ubuntu/backups/...sql` связана с тем, что redirect выполняется от пользователя `ubuntu`, а папка/файл создан через `sudo`. Быстрое исправление: `sudo chown -R ubuntu:ubuntu /home/ubuntu/backups`, затем повторить `pg_dump`.
+
+
+### 12.6 Правильный production repo: project_nis
+
+Уточнение: production monorepo находится в `https://github.com/d-pascenco/project_nis`, а не в старом frontend-only `nextpath-ai-navigator`. На хосте рабочая папка должна быть `/home/ubuntu/project_nis`. Старую папку `/home/ubuntu/nextpath-ai-navigator` нужно удалить или архивировать как backup. Для точной миграции добавлен документ `docs/MIGRATE_HOST_TO_PROJECT_NIS.md`.

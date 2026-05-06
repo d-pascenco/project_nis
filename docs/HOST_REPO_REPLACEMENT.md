@@ -1,9 +1,11 @@
 # Замена frontend-only папки на хосте на новый monorepo
 
-Этот файл описывает именно ситуацию, которая произошла на хосте 2026-05-06:
+Этот файл оставлен как historical recovery-note. Актуальный production monorepo — `project_nis`; для текущей миграции используй `docs/MIGRATE_HOST_TO_PROJECT_NIS.md`.
 
-- `/home/ubuntu/nextpath-ai-navigator` был переименован;
-- затем снова был склонирован `https://github.com/d-pascenco/nextpath-ai-navigator.git`;
+Исторически этот файл описывал ситуацию, которая произошла на хосте 2026-05-06:
+
+- `/home/ubuntu/project_nis` был переименован;
+- затем снова был склонирован `https://github.com/d-pascenco/project_nis.git`;
 - после clone в папке оказались только frontend-файлы (`package.json`, `src`, `public`, `vite.config.ts`);
 - папок `backend/`, `scripts/`, `docs/` там нет;
 - поэтому `bash scripts/deploy_host.sh` закономерно падает с `No such file or directory`.
@@ -15,7 +17,7 @@
 Если после переименований сайт перестал открываться, можно просто пересобрать текущий frontend-only clone и снова положить `dist` в `/var/www/html`:
 
 ```bash
-cd /home/ubuntu/nextpath-ai-navigator
+cd /home/ubuntu/project_nis
 npm ci
 npm run build
 sudo rm -rf /var/www/html/*
@@ -58,7 +60,7 @@ sudo sh -c 'pg_dump -h 127.0.0.1 -U nextpath_app -d nextpath --schema-only > /ho
 В локальном репозитории должно быть так:
 
 ```text
-nextpath-ai-navigator/
+project_nis/
 ├── frontend/
 ├── backend/
 ├── docs/
@@ -79,7 +81,7 @@ git remote -v
 Если remote еще не настроен:
 
 ```bash
-git remote add origin git@github.com:d-pascenco/nextpath-ai-navigator.git
+git remote add origin git@github.com:d-pascenco/project_nis.git
 ```
 
 Если на GitHub сейчас старый frontend-only repo, а локально уже правильный monorepo, нужно заменить содержимое GitHub на monorepo:
@@ -101,12 +103,12 @@ git push -u origin main --force-with-lease
 cd /home/ubuntu
 
 # текущий clone frontend-only не удаляем навсегда, а переименовываем
-if [ -d /home/ubuntu/nextpath-ai-navigator ]; then
-  mv /home/ubuntu/nextpath-ai-navigator /home/ubuntu/nextpath-ai-navigator.frontend-only.$(date +%F-%H%M%S)
+if [ -d /home/ubuntu/project_nis ]; then
+  mv /home/ubuntu/project_nis /home/ubuntu/project_nis.frontend-only.$(date +%F-%H%M%S)
 fi
 
-git clone https://github.com/d-pascenco/nextpath-ai-navigator.git /home/ubuntu/nextpath-ai-navigator
-cd /home/ubuntu/nextpath-ai-navigator
+git clone https://github.com/d-pascenco/project_nis.git /home/ubuntu/project_nis
+cd /home/ubuntu/project_nis
 
 # обязательно должны появиться эти папки
 ls
@@ -127,7 +129,7 @@ find . -maxdepth 2 -type d \( -name frontend -o -name backend -o -name scripts -
 ## 5. Создать общий `.env` на хосте
 
 ```bash
-cd /home/ubuntu/nextpath-ai-navigator
+cd /home/ubuntu/project_nis
 cp .env.example .env
 nano .env
 ```
@@ -192,9 +194,9 @@ After=network.target postgresql.service
 [Service]
 User=ubuntu
 Group=ubuntu
-WorkingDirectory=/home/ubuntu/nextpath-ai-navigator/backend
-EnvironmentFile=/home/ubuntu/nextpath-ai-navigator/.env
-ExecStart=/home/ubuntu/nextpath-ai-navigator/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+WorkingDirectory=/home/ubuntu/project_nis/backend
+EnvironmentFile=/home/ubuntu/project_nis/.env
+ExecStart=/home/ubuntu/project_nis/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=5
 
@@ -209,7 +211,7 @@ sudo systemctl enable nextpath-backend
 ## 8. Запустить deploy
 
 ```bash
-cd /home/ubuntu/nextpath-ai-navigator
+cd /home/ubuntu/project_nis
 bash scripts/deploy_host.sh
 ```
 
@@ -251,7 +253,7 @@ psql -h 127.0.0.1 -U nextpath_app -d nextpath -c "SELECT id, full_name, target_p
 После правильного clone monorepo дальнейший deploy будет коротким:
 
 ```bash
-cd /home/ubuntu/nextpath-ai-navigator
+cd /home/ubuntu/project_nis
 git pull --ff-only
 bash scripts/deploy_host.sh
 ```

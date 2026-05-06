@@ -92,12 +92,12 @@ git push origin main
 cd /home/ubuntu
 
 # старый каталог не удаляем сразу — переименовываем, чтобы был быстрый rollback
-if [ -d /home/ubuntu/nextpath-ai-navigator ]; then
-  mv /home/ubuntu/nextpath-ai-navigator /home/ubuntu/nextpath-ai-navigator.old.$(date +%F-%H%M%S)
+if [ -d /home/ubuntu/project_nis ]; then
+  mv /home/ubuntu/project_nis /home/ubuntu/project_nis.old.$(date +%F-%H%M%S)
 fi
 
-git clone https://github.com/d-pascenco/nextpath-ai-navigator.git /home/ubuntu/nextpath-ai-navigator
-cd /home/ubuntu/nextpath-ai-navigator
+git clone https://github.com/d-pascenco/project_nis.git /home/ubuntu/project_nis
+cd /home/ubuntu/project_nis
 ```
 
 Если GitHub private и попросит доступ — используй GitHub token или SSH deploy key.
@@ -105,7 +105,7 @@ cd /home/ubuntu/nextpath-ai-navigator
 ### 3.3 На хосте: последующие деплои
 
 ```bash
-cd /home/ubuntu/nextpath-ai-navigator
+cd /home/ubuntu/project_nis
 git pull --ff-only
 bash scripts/deploy_host.sh
 ```
@@ -117,14 +117,14 @@ bash scripts/deploy_host.sh
 ### 4.1 На хосте
 
 ```bash
-mkdir -p /home/ubuntu/git /home/ubuntu/nextpath-ai-navigator
-git init --bare /home/ubuntu/git/nextpath.git
+mkdir -p /home/ubuntu/git /home/ubuntu/project_nis
+git init --bare /home/ubuntu/git/project_nis.git
 ```
 
 Создай hook:
 
 ```bash
-nano /home/ubuntu/git/nextpath.git/hooks/post-receive
+nano /home/ubuntu/git/project_nis.git/hooks/post-receive
 ```
 
 Вставь:
@@ -134,8 +134,8 @@ nano /home/ubuntu/git/nextpath.git/hooks/post-receive
 set -euo pipefail
 
 BRANCH="main"
-WORK_TREE="/home/ubuntu/nextpath-ai-navigator"
-GIT_DIR="/home/ubuntu/git/nextpath.git"
+WORK_TREE="/home/ubuntu/project_nis"
+GIT_DIR="/home/ubuntu/git/project_nis.git"
 
 while read oldrev newrev refname; do
   if [ "$refname" = "refs/heads/$BRANCH" ]; then
@@ -150,13 +150,13 @@ done
 Права:
 
 ```bash
-chmod +x /home/ubuntu/git/nextpath.git/hooks/post-receive
+chmod +x /home/ubuntu/git/project_nis.git/hooks/post-receive
 ```
 
 ### 4.2 На локальном компьютере
 
 ```bash
-git remote add prod ubuntu@SERVER_IP:/home/ubuntu/git/nextpath.git
+git remote add prod ubuntu@SERVER_IP:/home/ubuntu/git/project_nis.git
 git push prod main
 ```
 
@@ -183,7 +183,7 @@ git push prod HEAD:main
 Ручной запуск:
 
 ```bash
-cd /home/ubuntu/nextpath-ai-navigator
+cd /home/ubuntu/project_nis
 bash scripts/deploy_host.sh
 ```
 
@@ -198,7 +198,7 @@ WEB_ROOT=/var/www/nextpath bash scripts/deploy_host.sh
 Создай один общий файл секретов для всего monorepo:
 
 ```bash
-cd /home/ubuntu/nextpath-ai-navigator
+cd /home/ubuntu/project_nis
 cp .env.example .env
 nano .env
 ```
@@ -233,9 +233,9 @@ After=network.target postgresql.service
 [Service]
 User=ubuntu
 Group=ubuntu
-WorkingDirectory=/home/ubuntu/nextpath-ai-navigator/backend
-EnvironmentFile=/home/ubuntu/nextpath-ai-navigator/.env
-ExecStart=/home/ubuntu/nextpath-ai-navigator/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+WorkingDirectory=/home/ubuntu/project_nis/backend
+EnvironmentFile=/home/ubuntu/project_nis/.env
+ExecStart=/home/ubuntu/project_nis/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=5
 
@@ -332,7 +332,7 @@ sudo nginx -t && sudo systemctl reload nginx
 ### Repo rollback
 
 ```bash
-cd /home/ubuntu/nextpath-ai-navigator
+cd /home/ubuntu/project_nis
 git log --oneline -5
 git reset --hard COMMIT_SHA
 bash scripts/deploy_host.sh

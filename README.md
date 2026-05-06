@@ -9,7 +9,7 @@ Monorepo проекта NextPath.
 - `.env.example` — общий шаблон секретов для frontend/backend; реальный `.env` игнорируется Git.
 - `docs/DEPLOY_PRODUCTION.md` — общая инструкция по безопасному деплою на Oracle Ubuntu.
 - `docs/CURRENT_HOST_NEXT_STEPS.md` — конкретный план для текущего хоста `mnad-projest` по диагностическому выводу.
-- `docs/HOST_REPO_REPLACEMENT.md` — recovery-план, если на хост случайно снова склонирован старый frontend-only repo без `backend/` и `scripts/`.
+- `docs/MIGRATE_HOST_TO_PROJECT_NIS.md` — точный план: удалить/архивировать старый `nextpath-ai-navigator` на хосте и поднять `/home/ubuntu/project_nis`.
 - `scripts/deploy_host.sh` — helper-скрипт для сборки frontend, обновления backend и reload Nginx на production-хосте.
 - `wiki.md` — история настройки инфраструктуры и текущий workflow.
 
@@ -37,7 +37,7 @@ curl http://127.0.0.1:8000/api/health
 Короткий вариант после первичной настройки хоста:
 
 ```bash
-cd /home/ubuntu/nextpath-ai-navigator
+cd /home/ubuntu/project_nis
 git pull --ff-only
 bash scripts/deploy_host.sh
 ```
@@ -46,4 +46,4 @@ bash scripts/deploy_host.sh
 
 - общий runbook: [`docs/DEPLOY_PRODUCTION.md`](docs/DEPLOY_PRODUCTION.md);
 - конкретно для текущего хоста: [`docs/CURRENT_HOST_NEXT_STEPS.md`](docs/CURRENT_HOST_NEXT_STEPS.md);
-- если на хосте снова оказался frontend-only clone: [`docs/HOST_REPO_REPLACEMENT.md`](docs/HOST_REPO_REPLACEMENT.md).
+- миграция хоста на правильный `/home/ubuntu/project_nis`: [`docs/MIGRATE_HOST_TO_PROJECT_NIS.md`](docs/MIGRATE_HOST_TO_PROJECT_NIS.md).
