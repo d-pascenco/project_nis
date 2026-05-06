@@ -1,4 +1,18 @@
 import { useState } from "react";
+
+export interface RoadmapStage {
+  id: number;
+  title: string;
+  duration: string;
+  skills: string[];
+  resources: string[];
+}
+
+export interface RoadmapData {
+  stages: RoadmapStage[];
+  total_duration: string;
+  summary: string;
+}
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { StepIndicator } from "@/components/StepIndicator";
@@ -89,6 +103,8 @@ const Onboarding = () => {
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState(false);
+  const [roadmapData, setRoadmapData] = useState<RoadmapData | null>(null);
+  const [roadmapLoading, setRoadmapLoading] = useState(false);
 
   const updateFormData = (data: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));
@@ -105,19 +121,33 @@ const Onboarding = () => {
   };
 
   const submitForm = async () => {
-    setIsSubmitting(true);
+    setIsSubmitting(false);
+    setRoadmapLoading(true);
+    setShowRoadmap(true);
+
+    // сохраняем форму в БД (не блокируем UI)
+    fetch("/api/forms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    }).catch(() => {});
+
+    // генерируем роудмап через Groq
     try {
-      await fetch("/api/forms", {
+      const res = await fetch("/api/roadmap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
+      if (res.ok) {
+        const data = await res.json();
+        setRoadmapData(data);
+      }
     } catch {
-      // не блокируем пользователя при сетевой ошибке
+      // показываем статичный fallback
     } finally {
-      setIsSubmitting(false);
+      setRoadmapLoading(false);
     }
-    setShowRoadmap(true);
   };
 
   const handleNext = () => {
@@ -280,6 +310,8 @@ const Onboarding = () => {
                 targetProfession: formData.targetProfession,
                 timeline: formData.timeline,
               }}
+              roadmapData={roadmapData}
+              isLoading={roadmapLoading}
             />
             <div className="mt-10 text-center">
               <Button variant="ghost" onClick={handleBack}>

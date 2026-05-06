@@ -1,18 +1,20 @@
 import { FormCard } from "@/components/FormCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  CheckCircle2, 
-  Circle, 
-  Clock, 
-  BookOpen, 
-  Briefcase, 
+import {
+  CheckCircle2,
+  Circle,
+  Clock,
+  BookOpen,
+  Briefcase,
   Award,
   ChevronRight,
   Download,
   Share2,
-  Sparkles
+  Sparkles,
+  Loader2,
 } from "lucide-react";
+import { RoadmapData } from "@/pages/Onboarding";
 
 interface RoadmapPreviewProps {
   userData: {
@@ -20,6 +22,8 @@ interface RoadmapPreviewProps {
     targetProfession: string;
     timeline: string;
   };
+  roadmapData?: RoadmapData | null;
+  isLoading?: boolean;
 }
 
 const roadmapStages = [
@@ -65,7 +69,7 @@ const roadmapStages = [
   },
 ];
 
-export const RoadmapPreview = ({ userData }: RoadmapPreviewProps) => {
+export const RoadmapPreview = ({ userData, roadmapData, isLoading }: RoadmapPreviewProps) => {
   const professionLabels: Record<string, string> = {
     frontend: "Frontend Developer",
     backend: "Backend Developer",
@@ -110,10 +114,10 @@ export const RoadmapPreview = ({ userData }: RoadmapPreviewProps) => {
       {/* Quick stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { icon: Clock, label: "Срок", value: timelineLabels[userData.timeline] || "6 месяцев" },
-          { icon: BookOpen, label: "Этапов", value: "5 этапов" },
-          { icon: Award, label: "Навыков", value: "15+" },
-          { icon: Briefcase, label: "Проектов", value: "3 проекта" },
+          { icon: Clock, label: "Срок", value: roadmapData?.total_duration || timelineLabels[userData.timeline] || "6 месяцев" },
+          { icon: BookOpen, label: "Этапов", value: roadmapData ? `${roadmapData.stages.length} этапа` : "5 этапов" },
+          { icon: Award, label: "Навыков", value: roadmapData ? `${roadmapData.stages.reduce((n, s) => n + s.skills.length, 0)}+` : "15+" },
+          { icon: Briefcase, label: "Ресурсов", value: roadmapData ? `${roadmapData.stages.reduce((n, s) => n + s.resources.length, 0)}+` : "10+" },
         ].map((stat, idx) => (
           <div
             key={idx}
@@ -128,104 +132,77 @@ export const RoadmapPreview = ({ userData }: RoadmapPreviewProps) => {
 
       {/* Roadmap timeline */}
       <FormCard title="Ваш план развития">
-        <div className="relative">
-          {/* Vertical line */}
-          <div className="absolute left-5 top-0 bottom-0 w-px bg-border" />
-
-          <div className="space-y-6">
-            {roadmapStages.map((stage) => (
-              <div key={stage.id} className="relative pl-14">
-                {/* Stage indicator */}
-                <div
-                  className={`absolute left-0 w-10 h-10 rounded-full flex items-center justify-center font-serif ${
-                    stage.status === "current"
-                      ? "bg-foreground text-background"
-                      : stage.status === "completed"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-muted-foreground"
-                  }`}
-                >
-                  {stage.status === "completed" ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                  ) : stage.status === "current" ? (
-                    <span>{stage.id}</span>
-                  ) : (
-                    <Circle className="w-4 h-4" />
-                  )}
-                </div>
-
-                {/* Stage content */}
-                <div
-                  className={`p-5 rounded-xl border transition-all ${
-                    stage.status === "current"
-                      ? "bg-primary/5 border-primary/20"
-                      : "bg-card border-border hover:border-primary/10"
-                  }`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
-                    <div>
-                      <h3 className="font-medium text-foreground">
-                        {stage.title}
-                      </h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="w-3 h-3" />
-                        {stage.duration}
-                      </div>
-                    </div>
-                    {stage.status === "current" && (
-                      <Badge className="bg-primary/10 text-primary border-0">
-                        Текущий этап
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-2">
-                        Навыки:
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {stage.skills.map((skill) => (
-                          <Badge
-                            key={skill}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-2">
-                        Ресурсы:
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {stage.resources.map((resource) => (
-                          <Badge
-                            key={resource}
-                            variant="outline"
-                            className="text-xs text-muted-foreground"
-                          >
-                            {resource}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {stage.status === "current" && (
-                    <Button variant="default" size="sm" className="mt-4">
-                      Начать обучение
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-4 text-muted-foreground">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-sm">Генерируем персональный план...</p>
           </div>
-        </div>
+        ) : (
+          <>
+            {roadmapData?.summary && (
+              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                {roadmapData.summary}
+              </p>
+            )}
+            <div className="relative">
+              <div className="absolute left-5 top-0 bottom-0 w-px bg-border" />
+              <div className="space-y-6">
+                {(roadmapData?.stages ?? roadmapStages).map((stage, idx) => {
+                  const isCurrent = idx === 0;
+                  return (
+                    <div key={stage.id} className="relative pl-14">
+                      <div className={`absolute left-0 w-10 h-10 rounded-full flex items-center justify-center font-serif ${
+                        isCurrent ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"
+                      }`}>
+                        {isCurrent ? <span>{stage.id}</span> : <Circle className="w-4 h-4" />}
+                      </div>
+                      <div className={`p-5 rounded-xl border transition-all ${
+                        isCurrent ? "bg-primary/5 border-primary/20" : "bg-card border-border hover:border-primary/10"
+                      }`}>
+                        <div className="flex flex-wrap items-start justify-between gap-2 mb-3">
+                          <div>
+                            <h3 className="font-medium text-foreground">{stage.title}</h3>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Clock className="w-3 h-3" />
+                              {stage.duration}
+                            </div>
+                          </div>
+                          {isCurrent && (
+                            <Badge className="bg-primary/10 text-primary border-0">Текущий этап</Badge>
+                          )}
+                        </div>
+                        <div className="space-y-3">
+                          <div>
+                            <div className="text-xs text-muted-foreground mb-2">Навыки:</div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {stage.skills.map((skill) => (
+                                <Badge key={skill} variant="secondary" className="text-xs">{skill}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-muted-foreground mb-2">Ресурсы:</div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {stage.resources.map((resource) => (
+                                <Badge key={resource} variant="outline" className="text-xs text-muted-foreground">{resource}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        {isCurrent && (
+                          <Button variant="default" size="sm" className="mt-4">
+                            Начать обучение
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </FormCard>
 
       {/* Action buttons */}
