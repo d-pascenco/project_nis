@@ -87,16 +87,33 @@ const Onboarding = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [showRoadmap, setShowRoadmap] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const updateFormData = (data: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));
+  };
+
+  const submitForm = async () => {
+    setIsSubmitting(true);
+    try {
+      await fetch("/api/forms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+    } catch {
+      // не блокируем пользователя при сетевой ошибке
+    } finally {
+      setIsSubmitting(false);
+    }
+    setShowRoadmap(true);
   };
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
     } else {
-      setShowRoadmap(true);
+      submitForm();
     }
   };
 
@@ -216,11 +233,11 @@ const Onboarding = () => {
                 <ArrowLeft className="w-4 h-4" />
                 Назад
               </Button>
-              <Button variant="hero" onClick={handleNext}>
+              <Button variant="hero" onClick={handleNext} disabled={isSubmitting}>
                 {currentStep === steps.length - 1 ? (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    Создать карту
+                    {isSubmitting ? "Сохраняем..." : "Создать карту"}
                   </>
                 ) : (
                   <>
