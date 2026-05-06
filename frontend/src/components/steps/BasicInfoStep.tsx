@@ -36,7 +36,7 @@ export const BasicInfoStep = ({ data, onChange }: BasicInfoStepProps) => {
           <div className="space-y-2">
             <Label htmlFor="age" className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-primary" />
-              Возраст
+              Возраст <span className="text-destructive">*</span>
             </Label>
             <Input
               id="age"
@@ -51,7 +51,7 @@ export const BasicInfoStep = ({ data, onChange }: BasicInfoStepProps) => {
           <div className="space-y-2">
             <Label htmlFor="location" className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-primary" />
-              Город
+              Город <span className="text-destructive">*</span>
             </Label>
             <Input
               id="location"

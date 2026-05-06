@@ -68,7 +68,7 @@ export const GoalsStep = ({ data, onChange }: GoalsStepProps) => {
           <div className="space-y-2">
             <Label htmlFor="industry" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-accent" />
-              Целевая индустрия
+              Целевая индустрия <span className="text-destructive">*</span>
             </Label>
             <Select
               value={data.targetIndustry}
@@ -115,7 +115,7 @@ export const GoalsStep = ({ data, onChange }: GoalsStepProps) => {
         </div>
 
         <div className="space-y-3">
-          <Label>Приоритеты в карьере</Label>
+          <Label>Приоритеты в карьере <span className="text-destructive">*</span></Label>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {priorityOptions.map((priority) => (
               <div
@@ -141,7 +141,14 @@ export const GoalsStep = ({ data, onChange }: GoalsStepProps) => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="motivation">Почему вы выбрали эту цель?</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="motivation">
+              Почему вы выбрали эту цель? <span className="text-destructive">*</span>
+            </Label>
+            <span className={`text-xs ${data.motivation.trim().length >= 50 ? "text-muted-foreground" : "text-destructive"}`}>
+              {data.motivation.trim().length} / 50
+            </span>
+          </div>
           <Textarea
             id="motivation"
             placeholder="Расскажите, что вас мотивирует и почему вы хотите достичь именно этой цели..."

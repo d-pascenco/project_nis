@@ -102,28 +102,49 @@ const Onboarding = () => {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [validationError, setValidationError] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [roadmapData, setRoadmapData] = useState<RoadmapData | null>(null);
   const [roadmapLoading, setRoadmapLoading] = useState(false);
 
   const updateFormData = (data: Partial<FormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));
-    setValidationError(false);
+    setValidationError(null);
   };
 
-  const isCurrentStepValid = () => {
+  const getStepError = (): string | null => {
     switch (currentStep) {
-      case 0: return !!formData.fullName.trim() && !!formData.currentStatus;
-      case 1: return !!formData.education;
-      case 2: return !!formData.targetProfession && !!formData.timeline;
-      default: return true;
+      case 0:
+        if (!formData.fullName.trim()) return "Введите полное имя";
+        if (!formData.age) return "Укажите возраст";
+        if (!formData.location.trim()) return "Укажите город";
+        if (!formData.currentStatus) return "Выберите текущий статус";
+        return null;
+      case 1:
+        if (!formData.education) return "Выберите уровень образования";
+        if (!formData.university.trim()) return "Укажите учебное заведение";
+        if (!formData.specialization.trim()) return "Укажите специальность";
+        if (!formData.yearsExperience) return "Укажите опыт работы";
+        if (formData.cvSummary.trim().length < 300)
+          return `Краткое описание CV: минимум 300 символов (сейчас ${formData.cvSummary.trim().length})`;
+        return null;
+      case 2:
+        if (!formData.targetProfession) return "Выберите желаемую профессию";
+        if (!formData.targetIndustry) return "Выберите целевую индустрию";
+        if (!formData.timeline) return "Выберите желаемый срок";
+        if (formData.priorities.length === 0) return "Выберите хотя бы один приоритет в карьере";
+        if (formData.motivation.trim().length < 50)
+          return `Опишите мотивацию: минимум 50 символов (сейчас ${formData.motivation.trim().length})`;
+        return null;
+      default:
+        return null;
     }
   };
 
   const submitForm = async () => {
-    setIsSubmitting(false);
+    setIsSubmitting(true);
     setRoadmapLoading(true);
     setShowRoadmap(true);
+    setIsSubmitting(false);
 
     // сохраняем форму в БД (не блокируем UI)
     fetch("/api/forms", {
@@ -152,11 +173,12 @@ const Onboarding = () => {
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
-      if (!isCurrentStepValid()) {
-        setValidationError(true);
+      const error = getStepError();
+      if (error) {
+        setValidationError(error);
         return;
       }
-      setValidationError(false);
+      setValidationError(null);
       setCurrentStep((prev) => prev + 1);
     } else {
       submitForm();
@@ -164,7 +186,7 @@ const Onboarding = () => {
   };
 
   const handleBack = () => {
-    setValidationError(false);
+    setValidationError(null);
     if (showRoadmap) {
       setShowRoadmap(false);
     } else if (currentStep > 0) {
@@ -277,7 +299,7 @@ const Onboarding = () => {
             {/* Validation error */}
             {validationError && (
               <p className="text-sm text-destructive text-center mb-4">
-                Заполните обязательные поля, отмеченные *
+                {validationError}
               </p>
             )}
 

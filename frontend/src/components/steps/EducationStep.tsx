@@ -45,7 +45,7 @@ export const EducationStep = ({ data, onChange }: EducationStepProps) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="university">Учебное заведение</Label>
+            <Label htmlFor="university">Учебное заведение <span className="text-destructive">*</span></Label>
             <Input
               id="university"
               placeholder="МГУ им. Ломоносова"
@@ -56,7 +56,7 @@ export const EducationStep = ({ data, onChange }: EducationStepProps) => {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="specialization">Специальность</Label>
+            <Label htmlFor="specialization">Специальность <span className="text-destructive">*</span></Label>
             <Input
               id="specialization"
               placeholder="Информационные технологии"
@@ -71,7 +71,7 @@ export const EducationStep = ({ data, onChange }: EducationStepProps) => {
           <div className="space-y-2">
             <Label htmlFor="experience" className="flex items-center gap-2">
               <Briefcase className="w-4 h-4 text-primary" />
-              Опыт работы (лет)
+              Опыт работы (лет) <span className="text-destructive">*</span>
             </Label>
             <Input
               id="experience"
@@ -96,10 +96,15 @@ export const EducationStep = ({ data, onChange }: EducationStepProps) => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="cv" className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-primary" />
-            Краткое описание опыта (CV)
-          </Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="cv" className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-primary" />
+              Краткое описание опыта (CV) <span className="text-destructive">*</span>
+            </Label>
+            <span className={`text-xs ${data.cvSummary.trim().length >= 300 ? "text-muted-foreground" : "text-destructive"}`}>
+              {data.cvSummary.trim().length} / 300
+            </span>
+          </div>
           <Textarea
             id="cv"
             placeholder="Опишите ваш профессиональный опыт, достижения и ключевые навыки..."
