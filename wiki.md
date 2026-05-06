@@ -37,6 +37,7 @@
 В дальнейшем на хосте открыть вышеперечисленные порты можно через следюущие команды: 
 ```bash
 sudo iptables -I INPUT -p tcp --dport 80 -j ACCEPT
+sudo iptables -I INPUT -p tcp --dport 443 -j ACCEPT
 ```
 И проверка внутри:
 ```bash
@@ -47,6 +48,31 @@ sudo iptables -L -n
 Проверка снаружи:
 ```bash
 ncat -zv наш_ip 80
+```
+
+### 2.5 Сохранение iptables-правил после перезагрузки
+
+На Oracle Cloud iptables-правила сбрасываются при перезагрузке. Чтобы они применялись автоматически:
+
+```bash
+sudo apt install -y iptables-persistent
+sudo netfilter-persistent save
+```
+
+После этого правила сохраняются в `/etc/iptables/rules.v4` и восстанавливаются при каждом запуске системы.
+
+Если сайт перестал открываться после перезагрузки (Cloudflare `523 Origin Unreachable`), в первую очередь проверяем iptables:
+
+```bash
+sudo iptables -L INPUT -n --line-numbers | grep -E '80|443'
+```
+
+Если правил нет — добавляем и сохраняем снова:
+
+```bash
+sudo iptables -I INPUT -p tcp --dport 80 -j ACCEPT
+sudo iptables -I INPUT -p tcp --dport 443 -j ACCEPT
+sudo netfilter-persistent save
 ```
 - ответ будет что-то вроде Ncat: Connected to ваш_ip:80.
 
