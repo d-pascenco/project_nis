@@ -460,3 +460,288 @@ sudo ss -tulnp | grep 5432
 - автоматизация деплоя
 - добавление Docker / Docker Compose
 - оформление CI/CD
+
+
+## 11. Backend MVP для формы сайта
+
+Следующий технический этап — отдельный backend-сервис, который принимает данные onboarding-формы с фронтенда и сохраняет их в PostgreSQL.
+
+Важно: backend теперь привязан не к абстрактной форме `leads`, а к реальным полям страницы `/onboarding` из frontend-репозитория `https://github.com/d-pascenco/nextpath-ai-navigator`.
+
+### 11.1 Какие frontend-поля сохраняем
+
+В `src/pages/Onboarding.tsx` форма состоит из 5 шагов:
+
+| Шаг сайта | Компонент frontend | Поля payload |
+|-----------|--------------------|--------------|
+| О вас | `BasicInfoStep` | `fullName`, `age`, `location`, `currentStatus` |
+| Образование | `EducationStep` | `education`, `university`, `specialization`, `yearsExperience`, `currentRole`, `cvSummary` |
+| Цели | `GoalsStep` | `targetProfession`, `targetIndustry`, `timeline`, `motivation`, `priorities` |
+| Навыки | `SkillsStep` | `technicalSkills`, `softSkills`, `languages`, `learningStyle` |
+| Ограничения | `ConstraintsStep` | `hoursPerWeek`, `budget`, `healthConsiderations`, `preferOnline`, `preferRussian`, `needMentorship`, `additionalInfo` |
+
+Backend принимает именно эти camelCase-ключи, поэтому на фронтенде можно отправлять `JSON.stringify(formData)` без ручного переименования полей.
+
+### 11.2 Что добавлено в репозиторий
+
+В репозитории появился каталог `backend/`:
+
+- `backend/app/main.py` — FastAPI-приложение с endpoint'ами `/api/health` и `/api/forms`.
+- `backend/app/database.py` — подключение SQLAlchemy к PostgreSQL через `DATABASE_URL`.
+- `backend/app/models.py` — SQLAlchemy-модель таблицы `user_forms`.
+- `backend/app/schemas.py` — Pydantic-схемы, которые валидируют реальные поля формы сайта.
+- `backend/sql/001_create_user_forms.sql` — SQL-скрипт для ручного создания таблицы и выдачи прав `nextpath_app`.
+- `backend/.env.example` — пример переменных окружения для хоста.
+- `backend/tests/test_api.py` — базовые тесты API без подключения к реальной базе.
+
+### 11.3 Таблица для onboarding-формы
+
+Backend пишет данные формы в таблицу `user_forms`.
+
+Ключевые поля таблицы:
+
+```sql
+CREATE TABLE IF NOT EXISTS user_forms (
+    id SERIAL PRIMARY KEY,
+    full_name VARCHAR(255),
+    age INTEGER,
+    location VARCHAR(255),
+    current_status VARCHAR(100),
+    education VARCHAR(255),
+    university VARCHAR(255),
+    specialization VARCHAR(255),
+    years_experience INTEGER,
+    current_role VARCHAR(255),
+    cv_summary TEXT,
+    target_profession VARCHAR(255),
+    target_industry VARCHAR(255),
+    timeline VARCHAR(100),
+    motivation TEXT,
+    priorities JSONB NOT NULL DEFAULT '[]'::jsonb,
+    technical_skills JSONB NOT NULL DEFAULT '[]'::jsonb,
+    soft_skills JSONB NOT NULL DEFAULT '[]'::jsonb,
+    languages JSONB NOT NULL DEFAULT '[]'::jsonb,
+    learning_style VARCHAR(255),
+    hours_per_week INTEGER,
+    budget VARCHAR(255),
+    health_considerations TEXT,
+    prefer_online BOOLEAN,
+    prefer_russian BOOLEAN,
+    need_mentorship BOOLEAN,
+    additional_info TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+Полный SQL лежит в `backend/sql/001_create_user_forms.sql`.
+
+### 11.4 Локальный запуск backend
+
+```bash
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Проверка, что backend запущен:
+
+```bash
+curl http://127.0.0.1:8000/api/health
+```
+
+Ожидаемый ответ:
+
+```json
+{"status":"ok"}
+```
+
+### 11.5 Проверка записи формы
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/forms \
+  -H 'Content-Type: application/json' \
+  -d '{"fullName":"Test User","age":"21","currentStatus":"student","targetProfession":"Data Scientist","hoursPerWeek":15,"technicalSkills":["Python","SQL"],"languages":[{"name":"English","level":70}]}'
+```
+
+Если PostgreSQL доступен и переменная `DATABASE_URL` настроена правильно, backend вернет `id`, сообщение об успешном сохранении и `created_at`.
+
+Проверка в PostgreSQL:
+
+```sql
+SELECT id, full_name, target_profession, hours_per_week, created_at
+FROM user_forms
+ORDER BY id DESC
+LIMIT 5;
+```
+
+### 11.6 Переменные окружения для production
+
+На сервере нужно задать:
+
+```bash
+DATABASE_URL=postgresql://nextpath_app:REAL_PASSWORD@127.0.0.1:5432/nextpath
+APP_HOST=127.0.0.1
+APP_PORT=8000
+FRONTEND_ORIGINS=https://nextpath.su,https://www.nextpath.su
+CREATE_TABLES_ON_STARTUP=true
+```
+
+Пароль в `DATABASE_URL` нужно заменить на реальный пароль пользователя `nextpath_app`.
+
+### 11.7 Подключение frontend
+
+На странице `/onboarding` финальная кнопка `Создать карту` сейчас переводит пользователя к `RoadmapPreview`. Перед этим нужно отправить форму:
+
+```ts
+const response = await fetch("/api/forms", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(formData),
+});
+
+if (!response.ok) {
+  throw new Error("Не удалось сохранить форму");
+}
+```
+
+Для production URL будет:
+
+```text
+POST https://nextpath.su/api/forms
+```
+
+### 11.8 Production-запуск backend через systemd
+
+На хосте backend лучше держать отдельным systemd-сервисом, чтобы он автоматически перезапускался после падения или перезагрузки сервера.
+
+Пример файла `/etc/systemd/system/nextpath-backend.service`:
+
+```ini
+[Unit]
+Description=NextPath FastAPI Backend
+After=network.target postgresql.service
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/nextpath-ai-navigator/backend
+EnvironmentFile=/home/ubuntu/nextpath-ai-navigator/backend/.env
+ExecStart=/home/ubuntu/nextpath-ai-navigator/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Команды запуска:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable nextpath-backend
+sudo systemctl start nextpath-backend
+sudo systemctl status nextpath-backend
+journalctl -u nextpath-backend -f
+```
+
+### 11.9 Nginx reverse proxy для API
+
+В конфиг сайта Nginx нужно добавить проксирование API на локальный backend:
+
+```nginx
+location /api/ {
+    proxy_pass http://127.0.0.1:8000/api/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+После изменения конфига:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+curl https://nextpath.su/api/health
+```
+
+### 11.10 Важное замечание по PostgreSQL
+
+После появления backend не нужно держать PostgreSQL открытым наружу на `0.0.0.0/0`, если база и backend находятся на одном сервере.
+
+Лучше схема такая:
+
+```text
+Пользователь → HTTPS → nginx → FastAPI backend → PostgreSQL localhost
+```
+
+То есть PostgreSQL должен быть доступен backend-у через `127.0.0.1:5432`, а внешний порт `5432` лучше закрыть, если он больше не нужен команде для прямого подключения из SQL-клиентов.
+
+## 12. Деплой нового monorepo на существующий хост
+
+После переноса frontend в этот репозиторий проект должен деплоиться как monorepo:
+
+```text
+nextpath-ai-navigator/
+├── frontend/
+├── backend/
+├── docs/DEPLOY_PRODUCTION.md
+└── scripts/deploy_host.sh
+```
+
+Подробный production-runbook лежит в `docs/DEPLOY_PRODUCTION.md`. Короткая схема такая:
+
+1. Сначала на хосте сделать backup текущего `/var/www/html` или `/var/www/nextpath`, а также `/etc/nginx`.
+2. Не удалять старый сайт сразу: старую папку repo переименовать в `*.old.<date>`.
+3. Клонировать новый repo в `/home/ubuntu/nextpath-ai-navigator`.
+4. Создать `backend/.env` с реальным `DATABASE_URL`.
+5. Создать/проверить systemd-service `nextpath-backend`.
+6. Добавить в Nginx reverse proxy `/api/` на `127.0.0.1:8000` и SPA fallback `try_files $uri $uri/ /index.html`.
+7. Запустить `bash scripts/deploy_host.sh`.
+8. Проверить `https://nextpath.su/onboarding` и `https://nextpath.su/api/health`.
+
+### 12.1 Команды диагностики перед деплоем
+
+Если нужно понять текущее состояние хоста перед заменой сайта, выполнить по SSH:
+
+```bash
+whoami
+hostname -I
+sudo nginx -t
+sudo systemctl status nginx --no-pager
+sudo find /etc/nginx/sites-enabled -maxdepth 1 -type f -print -exec sed -n '1,220p' {} \;
+sudo find /var/www -maxdepth 3 -type f \( -name 'index.html' -o -name '*.conf' \) -print
+find /home/ubuntu -maxdepth 2 -type d \( -name '.git' -o -name 'backend' -o -name 'frontend' -o -name 'nextpath*' \) -print
+node -v || true
+npm -v || true
+python3 --version
+sudo systemctl status postgresql --no-pager
+sudo ss -tulnp | grep -E ':(80|443|5432|8000)\b' || true
+sudo systemctl status nextpath-backend --no-pager || true
+```
+
+### 12.2 Как настроить push с локального repo на production
+
+Есть два варианта:
+
+- проще: пушить в GitHub, а на хосте делать `git pull --ff-only && bash scripts/deploy_host.sh`;
+- удобнее: создать bare repo `/home/ubuntu/git/nextpath.git` на хосте и добавить локальный remote `prod`, чтобы `git push prod main` запускал deploy hook.
+
+Подробные команды для обоих вариантов описаны в `docs/DEPLOY_PRODUCTION.md`.
+
+### 12.3 Фактическое состояние хоста на момент миграции
+
+По диагностике хоста `mnad-projest`:
+
+- `nginx` активен, `sudo nginx -t` проходит;
+- текущий web root фактически содержит `/var/www/html/index.html`;
+- старый repo-каталог есть в `/home/ubuntu/nextpath-ai-navigator`;
+- `node v18.19.1`, `npm 9.2.0`, `python 3.12.3`, `PostgreSQL 16.13` уже установлены;
+- `nextpath-backend.service` еще не создан;
+- PostgreSQL слушает `0.0.0.0:5432`, поэтому после запуска backend порт лучше закрыть наружу и вернуть БД на localhost.
+
+Для этого состояния добавлена отдельная пошаговая инструкция `docs/CURRENT_HOST_NEXT_STEPS.md`. Главное отличие от общего runbook: deploy script теперь по умолчанию публикует frontend в `/var/www/html`, чтобы сохранить текущий Nginx web root и не ломать существующие настройки HTTPS.
