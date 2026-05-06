@@ -277,7 +277,14 @@ def get_me(authorization: str | None = Header(default=None), db: Session = Depen
         raise HTTPException(status_code=503, detail="Database error") from exc
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return {"id": user.id, "email": user.email, "name": user.name, "picture": user.picture, "roadmap": user.roadmap}
+    return {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "picture": user.picture,
+        "roadmap": user.roadmap,
+        "completed_stages": user.completed_stages or [],
+    }
 
 
 class RoadmapSave(BaseModel):
@@ -301,5 +308,55 @@ def save_roadmap(
     except SQLAlchemyError as exc:
         db.rollback()
         logger.error("DB error saving roadmap: %s", exc)
+        raise HTTPException(status_code=503, detail="Database error") from exc
+    return {"ok": True}
+
+
+class ProfileUpdate(BaseModel):
+    name: str
+
+
+@app.put("/api/me/profile")
+def update_profile(
+    payload: ProfileUpdate,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> dict:
+    user_id = _get_user_id(authorization, db)
+    try:
+        user = db.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        user.name = payload.name.strip()
+        db.commit()
+        logger.info("Profile updated for user_id=%d", user_id)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.error("DB error updating profile: %s", exc)
+        raise HTTPException(status_code=503, detail="Database error") from exc
+    return {"ok": True, "name": user.name}
+
+
+class ProgressUpdate(BaseModel):
+    completed_stages: list[int]
+
+
+@app.put("/api/me/progress")
+def update_progress(
+    payload: ProgressUpdate,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> dict:
+    user_id = _get_user_id(authorization, db)
+    try:
+        user = db.get(User, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        user.completed_stages = payload.completed_stages
+        db.commit()
+        logger.info("Progress updated for user_id=%d: %s", user_id, payload.completed_stages)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.error("DB error updating progress: %s", exc)
         raise HTTPException(status_code=503, detail="Database error") from exc
     return {"ok": True}

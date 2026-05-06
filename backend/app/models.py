@@ -16,6 +16,7 @@ class User(Base):
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     picture: Mapped[str | None] = mapped_column(Text, nullable=True)
     roadmap: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    completed_stages: Mapped[list[int]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
