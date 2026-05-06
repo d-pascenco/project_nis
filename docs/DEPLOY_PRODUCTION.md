@@ -176,7 +176,7 @@ git push prod HEAD:main
 4. Копирует `dist/` в web root. По умолчанию это `/var/www/html`, чтобы сохранить текущую настройку хоста.
 5. Создает/обновляет backend virtualenv.
 6. Устанавливает `backend/requirements.txt`.
-7. Применяет SQL `backend/sql/001_create_user_forms.sql`, если `psql` доступен.
+7. Читает общий root `.env` и применяет SQL `backend/sql/001_create_user_forms.sql`, если `DATABASE_URL` и `psql` доступны.
 8. Перезапускает `nextpath-backend`, если systemd-service уже создан.
 9. Проверяет и перезагружает Nginx.
 
@@ -193,17 +193,17 @@ bash scripts/deploy_host.sh
 WEB_ROOT=/var/www/nextpath bash scripts/deploy_host.sh
 ```
 
-## 6. Backend `.env` на хосте
+## 6. Общий root `.env` на хосте
 
-Создай файл:
+Создай один общий файл секретов для всего monorepo:
 
 ```bash
-cd /home/ubuntu/nextpath-ai-navigator/backend
+cd /home/ubuntu/nextpath-ai-navigator
 cp .env.example .env
 nano .env
 ```
 
-Пример:
+Файл `.env` добавлен в `.gitignore` и не должен попадать в Git. Пример:
 
 ```env
 DATABASE_URL=postgresql://nextpath_app:REAL_PASSWORD@127.0.0.1:5432/nextpath
@@ -234,7 +234,7 @@ After=network.target postgresql.service
 User=ubuntu
 Group=ubuntu
 WorkingDirectory=/home/ubuntu/nextpath-ai-navigator/backend
-EnvironmentFile=/home/ubuntu/nextpath-ai-navigator/backend/.env
+EnvironmentFile=/home/ubuntu/nextpath-ai-navigator/.env
 ExecStart=/home/ubuntu/nextpath-ai-navigator/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=5

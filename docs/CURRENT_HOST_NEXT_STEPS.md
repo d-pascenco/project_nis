@@ -11,16 +11,15 @@
 - backend-service `nextpath-backend` еще не создан;
 - PostgreSQL сейчас слушает `0.0.0.0:5432` и `[::]:5432`.
 
-## 1. Еще одна быстрая проверка Nginx
+## 1. Nginx уже найден
 
-Команда `find /etc/nginx/sites-enabled -type f` ничего не показала, потому что конфиг может быть symlink или лежать не в `sites-enabled`. Перед правкой выполни:
+По свежему выводу найден точный конфиг сайта:
 
-```bash
-sudo nginx -T | sed -n '1,260p'
-sudo find -L /etc/nginx/sites-enabled /etc/nginx/conf.d -maxdepth 1 -type f -print -exec sed -n '1,220p' {} \;
+```text
+/etc/nginx/sites-enabled/nextpath.su
 ```
 
-Нужно найти `server { ... }`, который отвечает за `nextpath.su` и уже содержит SSL-настройки Certbot/Cloudflare. Его не удаляем, только добавляем `location /api/` и SPA fallback.
+В нем уже есть Certbot SSL, `server_name nextpath.su www.nextpath.su`, `root /var/www/html` и SPA fallback. Его не удаляем и не пересоздаем: только добавляем `location /api/` перед `location /`.
 
 ## 2. Backup текущего состояния
 
@@ -44,10 +43,12 @@ cd /home/ubuntu/nextpath-ai-navigator
 
 Если репозиторий приватный, GitHub попросит token или нужно будет настроить SSH deploy key.
 
-## 4. Создать backend `.env`
+## 4. Создать общий root `.env` для всех компонентов
+
+Секреты теперь лучше держать в одном файле `/home/ubuntu/nextpath-ai-navigator/.env`. Он добавлен в `.gitignore`, поэтому не будет коммититься.
 
 ```bash
-cd /home/ubuntu/nextpath-ai-navigator/backend
+cd /home/ubuntu/nextpath-ai-navigator
 cp .env.example .env
 nano .env
 ```
@@ -76,7 +77,7 @@ After=network.target postgresql.service
 User=ubuntu
 Group=ubuntu
 WorkingDirectory=/home/ubuntu/nextpath-ai-navigator/backend
-EnvironmentFile=/home/ubuntu/nextpath-ai-navigator/backend/.env
+EnvironmentFile=/home/ubuntu/nextpath-ai-navigator/.env
 ExecStart=/home/ubuntu/nextpath-ai-navigator/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=5
@@ -91,11 +92,17 @@ sudo systemctl enable nextpath-backend
 
 Пока не страшно, если сервис еще не стартует: сначала нужно поставить backend-зависимости через deploy script.
 
-## 6. Nginx: оставить `/var/www/html` и добавить API
+## 6. Nginx: точная правка `/etc/nginx/sites-enabled/nextpath.su`
 
 Так как текущий сайт уже отдается из `/var/www/html`, самый безопасный путь — оставить этот web root.
 
-В SSL `server { ... }` для `nextpath.su` должны быть такие блоки:
+Открой конфиг:
+
+```bash
+sudo nano /etc/nginx/sites-enabled/nextpath.su
+```
+
+Первый SSL `server { ... }` должен стать таким по смыслу:
 
 ```nginx
 root /var/www/html;
@@ -114,7 +121,9 @@ location / {
 }
 ```
 
-Проверка после правки:
+
+
+Можно заменить первый блок вручную или аккуратно применить такой фрагмент через `nano`: добавить `location /api/` перед текущим `location /`. Итоговая проверка после правки:
 
 ```bash
 sudo nginx -t
@@ -128,7 +137,7 @@ cd /home/ubuntu/nextpath-ai-navigator
 bash scripts/deploy_host.sh
 ```
 
-Скрипт по умолчанию копирует frontend-сборку в `/var/www/html`, обновляет backend venv, применяет SQL, рестартит `nextpath-backend` и reload'ит Nginx.
+Скрипт по умолчанию читает общий root `.env`, копирует frontend-сборку в `/var/www/html`, обновляет backend venv, применяет SQL, рестартит `nextpath-backend` и reload'ит Nginx.
 
 ## 8. Проверки после деплоя
 

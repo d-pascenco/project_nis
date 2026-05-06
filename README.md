@@ -6,6 +6,7 @@ Monorepo проекта NextPath.
 
 - `frontend/` — сайт NextPath, собирается в статический `dist/` и отдается через Nginx.
 - `backend/` — FastAPI API для onboarding-формы и записи данных в PostgreSQL.
+- `.env.example` — общий шаблон секретов для frontend/backend; реальный `.env` игнорируется Git.
 - `docs/DEPLOY_PRODUCTION.md` — общая инструкция по безопасному деплою на Oracle Ubuntu.
 - `docs/CURRENT_HOST_NEXT_STEPS.md` — конкретный план для текущего хоста `mnad-projest` по твоему диагностическому выводу.
 - `scripts/deploy_host.sh` — helper-скрипт для сборки frontend, обновления backend и reload Nginx на production-хосте.
@@ -16,11 +17,11 @@ Monorepo проекта NextPath.
 ## Backend локально
 
 ```bash
+cp .env.example .env
 cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 

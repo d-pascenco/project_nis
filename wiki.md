@@ -745,3 +745,10 @@ sudo systemctl status nextpath-backend --no-pager || true
 - PostgreSQL слушает `0.0.0.0:5432`, поэтому после запуска backend порт лучше закрыть наружу и вернуть БД на localhost.
 
 Для этого состояния добавлена отдельная пошаговая инструкция `docs/CURRENT_HOST_NEXT_STEPS.md`. Главное отличие от общего runbook: deploy script теперь по умолчанию публикует frontend в `/var/www/html`, чтобы сохранить текущий Nginx web root и не ломать существующие настройки HTTPS.
+
+
+### 12.4 Общий `.env` и точный Nginx-конфиг
+
+По последней проверке Nginx точный файл сайта: `/etc/nginx/sites-enabled/nextpath.su`. В нем уже есть SSL от Certbot, `server_name nextpath.su www.nextpath.su`, `root /var/www/html` и SPA fallback. Правка минимальная: добавить `location /api/` на `http://127.0.0.1:8000` перед текущим `location /`.
+
+Для секретов добавлен общий root `.env`: копируем `.env.example` в `.env` в корне repo. `.env` игнорируется Git, поэтому его можно держать локально и на хосте, а в репозиторий коммитить только безопасные изменения. Backend также поддерживает `backend/.env` как локальный override, но production-инструкция использует root `.env`.

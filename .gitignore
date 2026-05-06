@@ -4,3 +4,8 @@ __pycache__/
 .env
 .pytest_cache/
 .coverage
+.env.*
+!.env.example
+!backend/.env.example
+venv/
+backend/venv/

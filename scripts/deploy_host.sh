@@ -7,6 +7,18 @@ WEB_ROOT="${WEB_ROOT:-/var/www/html}"
 SERVICE_NAME="${SERVICE_NAME:-nextpath-backend}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
+if [ -f "$APP_DIR/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$APP_DIR/.env"
+  set +a
+elif [ -f "$BACKEND_DIR/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$BACKEND_DIR/.env"
+  set +a
+fi
+
 if [ -d "$APP_DIR/frontend" ]; then
   FRONTEND_DIR="${FRONTEND_DIR:-$APP_DIR/frontend}"
 elif [ -f "$APP_DIR/package.json" ]; then
@@ -43,16 +55,10 @@ source "$BACKEND_DIR/venv/bin/activate"
 pip install --upgrade pip
 pip install -r requirements.txt
 
-if [ -f "$BACKEND_DIR/.env" ] && command -v psql >/dev/null 2>&1; then
-  set -a
-  # shellcheck disable=SC1091
-  source "$BACKEND_DIR/.env"
-  set +a
-  if [ -n "${DATABASE_URL:-}" ] && [ -f "$BACKEND_DIR/sql/001_create_user_forms.sql" ]; then
-    psql "$DATABASE_URL" -f "$BACKEND_DIR/sql/001_create_user_forms.sql" || true
-  fi
+if command -v psql >/dev/null 2>&1 && [ -n "${DATABASE_URL:-}" ] && [ -f "$BACKEND_DIR/sql/001_create_user_forms.sql" ]; then
+  psql "$DATABASE_URL" -f "$BACKEND_DIR/sql/001_create_user_forms.sql" || true
 else
-  echo "WARN: $BACKEND_DIR/.env or psql not found; skipping SQL migration."
+  echo "WARN: DATABASE_URL, psql, or SQL file not found; skipping SQL migration."
 fi
 
 if systemctl list-unit-files | grep -q "^$SERVICE_NAME.service"; then

@@ -104,7 +104,9 @@ cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+cd ..
 cp .env.example .env
+cd backend
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
@@ -135,7 +137,7 @@ LIMIT 5;
 
 | Переменная | Назначение | Пример |
 |------------|------------|--------|
-| `DATABASE_URL` | строка подключения к PostgreSQL | `postgresql://nextpath_app:REAL_PASSWORD@127.0.0.1:5432/nextpath` |
+| `DATABASE_URL` | строка подключения к PostgreSQL из root `.env` или `backend/.env` | `postgresql://nextpath_app:REAL_PASSWORD@127.0.0.1:5432/nextpath` |
 | `APP_HOST` | host для ручного запуска/systemd | `127.0.0.1` |
 | `APP_PORT` | port для ручного запуска/systemd | `8000` |
 | `FRONTEND_ORIGINS` | разрешенные frontend origins через запятую | `https://nextpath.su,https://www.nextpath.su` |
@@ -152,7 +154,7 @@ After=network.target postgresql.service
 User=ubuntu
 Group=ubuntu
 WorkingDirectory=/home/ubuntu/nextpath-ai-navigator/backend
-EnvironmentFile=/home/ubuntu/nextpath-ai-navigator/backend/.env
+EnvironmentFile=/home/ubuntu/nextpath-ai-navigator/.env
 ExecStart=/home/ubuntu/nextpath-ai-navigator/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=5
