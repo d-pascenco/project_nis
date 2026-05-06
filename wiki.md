@@ -201,47 +201,55 @@ echo '<html><body>ok</body></html>' | sudo tee /var/www/html/index.html
 http://<наш_ip_инстанса>
 ```
 
-## 7. Пулим и собираем проект сайта 
+## 7. Пулим и собираем проект сайта
 Репозиторий:
-https://github.com/d-pascenco/nextpath-ai-navigator.git
+https://github.com/d-pascenco/project_nis.git
 
 ### 7.1 Переходим в домашнюю папку и клонируем проект из репозитория:
 ```bash
 cd ~
-git clone https://github.com/d-pascenco/nextpath-ai-navigator.git
+git clone https://github.com/d-pascenco/project_nis.git
 ```
 - Гит попросит логин и токен.
 
-Проект сайта находится в следующей директории:
+Проект находится в следующей директории:
 ```
-/home/ubuntu/nextpath-ai-navigator
+/home/ubuntu/project_nis
 ```
 
-### 7.2 Заходим в скаченеую папку, устанавливаем зависимости (библиотеки из [package.json](https://github.com/d-pascenco/nextpath-ai-navigator/blob/main/package.json)) в node_modules)
+Структура monorepo:
+```
+project_nis/
+├── frontend/
+├── backend/
+├── scripts/deploy_host.sh
+└── docs/
+```
+
+### 7.2 Устанавливаем зависимости и собираем frontend
 ```bash
-cd nextpath-ai-navigator
-npm i
+cd project_nis/frontend
+npm install
 npm run build
 ```
 Возможно еще понадобятся команды:
 `npm run dev` - Start the development server with auto-reloading and an instant preview.
 
 ### 7.3 После установки Nginx настроен на /var/www/html (дефолтная конфигурация nginx).
-Поэтому при выкатке обновлений на сайт нужно будет длеать следующее:
+Поэтому при выкатке обновлений на сайт нужно будет делать следующее:
 ```bash
-cd ~/app
-git pull
-npm install      # если обновились зависимости
-npm run build
+cd ~/project_nis
+git pull --ff-only
+bash scripts/deploy_host.sh
 ```
 
-Деплой:
-```bash
-sudo rm -rf /var/www/html/*
-sudo cp -r dist/* /var/www/html/
-sudo chown -R www-data:www-data /var/www/html
-sudo systemctl reload nginx
-```
+Скрипт `scripts/deploy_host.sh` автоматически:
+- устанавливает зависимости и собирает frontend
+- копирует `dist/` в web root
+- обновляет Python venv бэкенда
+- применяет SQL-миграции
+- перезапускает `nextpath-backend`
+- проверяет и reload'ит Nginx
 
 ### 7.4 Выдаем сайту сертификат через sertbot (переход с http на https)
 HTTPS — обязательно для любого сайта с формами/данными. Бесплатно через Let’s Encrypt.
@@ -460,11 +468,9 @@ sudo ss -tulnp | grep 5432
 - оформление CI/CD
 
 
-## 11. Backend MVP для формы сайта
+## 11. Backend для формы сайта
 
-Следующий технический этап — отдельный backend-сервис, который принимает данные onboarding-формы с фронтенда и сохраняет их в PostgreSQL.
-
-Важно: backend теперь привязан не к абстрактной форме `leads`, а к реальным полям страницы `/onboarding` из frontend-репозитория `https://github.com/d-pascenco/nextpath-ai-navigator`.
+Backend-сервис принимает данные onboarding-формы с фронтенда и сохраняет их в PostgreSQL.
 
 ### 11.1 Какие frontend-поля сохраняем
 
@@ -591,31 +597,23 @@ CREATE_TABLES_ON_STARTUP=true
 
 ### 11.7 Подключение frontend
 
-На странице `/onboarding` финальная кнопка `Создать карту` сейчас переводит пользователя к `RoadmapPreview`. Перед этим нужно отправить форму:
+При нажатии кнопки «Создать карту» на последнем шаге `src/pages/Onboarding.tsx` отправляет данные формы на backend:
 
 ```ts
-const response = await fetch("/api/forms", {
+await fetch("/api/forms", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(formData),
 });
-
-if (!response.ok) {
-  throw new Error("Не удалось сохранить форму");
-}
 ```
 
-Для production URL будет:
-
-```text
-POST https://nextpath.su/api/forms
-```
+Backend принимает camelCase-ключи напрямую из `FormData`, поэтому дополнительный маппинг на фронтенде не нужен.
 
 ### 11.8 Production-запуск backend через systemd
 
-На хосте backend лучше держать отдельным systemd-сервисом, чтобы он автоматически перезапускался после падения или перезагрузки сервера.
+На хосте backend держится отдельным systemd-сервисом — автоматически перезапускается после падения или перезагрузки сервера.
 
-Пример файла `/etc/systemd/system/nextpath-backend.service`:
+Файл `/etc/systemd/system/nextpath-backend.service`:
 
 ```ini
 [Unit]
@@ -625,9 +623,9 @@ After=network.target postgresql.service
 [Service]
 User=ubuntu
 Group=ubuntu
-WorkingDirectory=/home/ubuntu/nextpath-ai-navigator/backend
-EnvironmentFile=/home/ubuntu/nextpath-ai-navigator/backend/.env
-ExecStart=/home/ubuntu/nextpath-ai-navigator/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+WorkingDirectory=/home/ubuntu/project_nis/backend
+EnvironmentFile=/home/ubuntu/project_nis/.env
+ExecStart=/home/ubuntu/project_nis/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
 Restart=always
 RestartSec=5
 
@@ -679,166 +677,87 @@ curl https://nextpath.su/api/health
 
 То есть PostgreSQL должен быть доступен backend-у через `127.0.0.1:5432`, а внешний порт `5432` лучше закрыть, если он больше не нужен команде для прямого подключения из SQL-клиентов.
 
-## 12. Деплой нового monorepo на существующий хост
+## 12. Деплой monorepo на хост
 
-После переноса frontend в этот репозиторий проект должен деплоиться как monorepo:
+Проект деплоится как monorepo:
 
 ```text
-nextpath-ai-navigator/
+project_nis/
 ├── frontend/
 ├── backend/
-├── docs/DEPLOY_PRODUCTION.md
-└── scripts/deploy_host.sh
+├── scripts/deploy_host.sh
+└── docs/DEPLOY_PRODUCTION.md
 ```
 
-Подробный production-runbook лежит в `docs/DEPLOY_PRODUCTION.md`. Короткая схема такая:
+Подробный production-runbook лежит в `docs/DEPLOY_PRODUCTION.md`. Короткая схема:
 
-1. Сначала на хосте сделать backup текущего `/var/www/html` или `/var/www/nextpath`, а также `/etc/nginx`.
-2. Не удалять старый сайт сразу: старую папку repo переименовать в `*.old.<date>`.
-3. Клонировать новый repo в `/home/ubuntu/nextpath-ai-navigator`.
-4. Создать `backend/.env` с реальным `DATABASE_URL`.
-5. Создать/проверить systemd-service `nextpath-backend`.
-6. Добавить в Nginx reverse proxy `/api/` на `127.0.0.1:8000` и SPA fallback `try_files $uri $uri/ /index.html`.
-7. Запустить `bash scripts/deploy_host.sh`.
-8. Проверить `https://nextpath.su/onboarding` и `https://nextpath.su/api/health`.
+1. Клонировать repo в `/home/ubuntu/project_nis`.
+2. Создать `.env` из `.env.example` с реальным `DATABASE_URL`.
+3. Создать systemd-service `nextpath-backend`.
+4. Добавить в Nginx reverse proxy `/api/` на `127.0.0.1:8000` и SPA fallback.
+5. Запустить `bash scripts/deploy_host.sh`.
+6. Проверить `https://nextpath.su/onboarding` и `https://nextpath.su/api/health`.
 
-### 12.1 Команды диагностики перед деплоем
-
-Если нужно понять текущее состояние хоста перед заменой сайта, выполнить по SSH:
+### 12.1 Первый деплой на хост
 
 ```bash
-whoami
-hostname -I
-sudo nginx -t
-sudo systemctl status nginx --no-pager
-sudo find /etc/nginx/sites-enabled -maxdepth 1 -type f -print -exec sed -n '1,220p' {} \;
-sudo find /var/www -maxdepth 3 -type f \( -name 'index.html' -o -name '*.conf' \) -print
-find /home/ubuntu -maxdepth 2 -type d \( -name '.git' -o -name 'backend' -o -name 'frontend' -o -name 'nextpath*' \) -print
-node -v || true
-npm -v || true
-python3 --version
-sudo systemctl status postgresql --no-pager
-sudo ss -tulnp | grep -E ':(80|443|5432|8000)\b' || true
-sudo systemctl status nextpath-backend --no-pager || true
+cd /home/ubuntu
+git clone https://github.com/d-pascenco/project_nis.git
+cd project_nis
+cp .env.example .env
+nano .env   # прописать DATABASE_URL и остальные переменные
+bash scripts/deploy_host.sh
 ```
 
-### 12.2 Как настроить push с локального repo на production
+### 12.2 Команды диагностики хоста
+
+```bash
+sudo nginx -t
+sudo systemctl status nginx --no-pager
+sudo systemctl status nextpath-backend --no-pager
+sudo ss -tulnp | grep -E ':(80|443|5432|8000)\b'
+node -v && npm -v && python3 --version
+```
+
+### 12.3 Как настроить push с локального repo на production
 
 Есть два варианта:
 
 - проще: пушить в GitHub, а на хосте делать `git pull --ff-only && bash scripts/deploy_host.sh`;
-- удобнее: создать bare repo `/home/ubuntu/git/nextpath.git` на хосте и добавить локальный remote `prod`, чтобы `git push prod main` запускал deploy hook.
+- удобнее: создать bare repo `/home/ubuntu/git/project_nis.git` на хосте и добавить локальный remote `prod`, чтобы `git push prod main` запускал deploy hook.
 
 Подробные команды для обоих вариантов описаны в `docs/DEPLOY_PRODUCTION.md`.
 
-### 12.3 Фактическое состояние хоста на момент миграции
+### 12.4 `.env` и Nginx-конфиг
 
-По диагностике хоста `mnad-projest`:
-
-- `nginx` активен, `sudo nginx -t` проходит;
-- текущий web root фактически содержит `/var/www/html/index.html`;
-- старый repo-каталог есть в `/home/ubuntu/nextpath-ai-navigator`;
-- `node v18.19.1`, `npm 9.2.0`, `python 3.12.3`, `PostgreSQL 16.13` уже установлены;
-- `nextpath-backend.service` еще не создан;
-- PostgreSQL слушает `0.0.0.0:5432`, поэтому после запуска backend порт лучше закрыть наружу и вернуть БД на localhost.
-
-Для этого состояния добавлена отдельная пошаговая инструкция `docs/CURRENT_HOST_NEXT_STEPS.md`. Главное отличие от общего runbook: deploy script теперь по умолчанию публикует frontend в `/var/www/html`, чтобы сохранить текущий Nginx web root и не ломать существующие настройки HTTPS.
-
-
-### 12.4 Общий `.env` и точный Nginx-конфиг
-
-По последней проверке Nginx точный файл сайта: `/etc/nginx/sites-enabled/nextpath.su`. В нем уже есть SSL от Certbot, `server_name nextpath.su www.nextpath.su`, `root /var/www/html` и SPA fallback. Правка минимальная: добавить `location /api/` на `http://127.0.0.1:8000` перед текущим `location /`.
-
-Для секретов добавлен общий root `.env`: копируем `.env.example` в `.env` в корне repo. `.env` игнорируется Git, поэтому его можно держать локально и на хосте, а в репозиторий коммитить только безопасные изменения. Backend также поддерживает `backend/.env` как локальный override, но production-инструкция использует root `.env`.
-
-
-### 12.5 Ошибка: на хост снова склонирован frontend-only repo
-
-Если после `git clone https://github.com/d-pascenco/nextpath-ai-navigator.git` на хосте в папке есть только `package.json`, `src`, `public`, `vite.config.ts`, но нет `backend/`, `scripts/`, `docs/`, значит GitHub по этому URL еще содержит старый frontend-only репозиторий. Нужно сначала запушить новый monorepo в GitHub или клонировать правильный URL. Для этой ситуации добавлен отдельный документ `docs/HOST_REPO_REPLACEMENT.md`.
-
-Ошибка backup `Permission denied` для `pg_dump > /home/ubuntu/backups/...sql` связана с тем, что redirect выполняется от пользователя `ubuntu`, а папка/файл создан через `sudo`. Быстрое исправление: `sudo chown -R ubuntu:ubuntu /home/ubuntu/backups`, затем повторить `pg_dump`.
-
-
-### 12.6 Правильный production repo: project_nis
-
-Уточнение: production monorepo находится в `https://github.com/d-pascenco/project_nis`, а не в старом frontend-only `nextpath-ai-navigator`. На хосте рабочая папка должна быть `/home/ubuntu/project_nis`. Старую папку `/home/ubuntu/nextpath-ai-navigator` нужно удалить или архивировать как backup. Для точной миграции добавлен документ `docs/MIGRATE_HOST_TO_PROJECT_NIS.md`.
-
-## 13. Миграция хоста на monorepo project_nis
-
-После выноса бэкенда в репозиторий проект был реорганизован в monorepo `project_nis`, объединяющий frontend и backend. Старый репозиторий `nextpath-ai-navigator` больше не используется как рабочий.
-
-### 13.1 Рабочие папки на хосте
-
-```text
-/home/ubuntu/project_nis             ← рабочая копия monorepo
-/home/ubuntu/nextpath-ai-navigator   ← устаревший frontend-only clone
-```
-
-Репозиторий:
-```text
-https://github.com/d-pascenco/project_nis.git
-```
-
-### 13.2 Миграция на хосте
+Секреты хранятся в корневом `.env` (игнорируется Git). Файл создаётся из `.env.example`:
 
 ```bash
-cd /home/ubuntu
-
-# сохраняем старый каталог как backup
-mv /home/ubuntu/nextpath-ai-navigator /home/ubuntu/nextpath-ai-navigator.old.$(date +%F)
-
-# клонируем monorepo
-git clone https://github.com/d-pascenco/project_nis.git /home/ubuntu/project_nis
-cd /home/ubuntu/project_nis
-
-# создаём .env из шаблона
 cp .env.example .env
-nano .env
 ```
 
-### 13.3 Обновление systemd-сервиса
+Минимальное содержимое:
 
-После переноса репозитория обновляем пути в сервисе:
-
-```ini
-[Service]
-WorkingDirectory=/home/ubuntu/project_nis/backend
-EnvironmentFile=/home/ubuntu/project_nis/.env
-ExecStart=/home/ubuntu/project_nis/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+```env
+DATABASE_URL=postgresql://nextpath_app:PASSWORD@127.0.0.1:5432/nextpath
+APP_HOST=127.0.0.1
+APP_PORT=8000
+FRONTEND_ORIGINS=https://nextpath.su,https://www.nextpath.su
+CREATE_TABLES_ON_STARTUP=true
 ```
 
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart nextpath-backend
-```
+Nginx-конфиг сайта: `/etc/nginx/sites-enabled/nextpath.su`. В нём SSL от Certbot и SPA fallback. Нужный блок для API:
 
-### 13.4 Деплой обновлений
-
-```bash
-cd ~/project_nis
-git pull --ff-only
-bash scripts/deploy_host.sh
-```
-
-Скрипт `scripts/deploy_host.sh` собирает frontend, копирует `dist/` в `/var/www/html`, обновляет Python venv, применяет SQL и перезапускает сервис.
-
-### 13.5 Ошибка при git pull: незакоммиченные изменения
-
-Если `git pull --ff-only` падает с ошибкой:
-
-```text
-error: Your local changes to the following files would be overwritten by merge:
-        backend/sql/001_create_user_forms.sql
-Please commit your changes or stash them before you merge.
-Aborting
-```
-
-На хосте есть незакоммиченные изменения. Решение:
-
-```bash
-git stash
-git pull --ff-only
-bash scripts/deploy_host.sh
+```nginx
+location /api/ {
+    proxy_pass http://127.0.0.1:8000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 60s;
+}
 ```
 
 ## 14. Подключение фронтенда к бэкенду
