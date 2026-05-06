@@ -732,3 +732,16 @@ sudo systemctl status nextpath-backend --no-pager || true
 - удобнее: создать bare repo `/home/ubuntu/git/nextpath.git` на хосте и добавить локальный remote `prod`, чтобы `git push prod main` запускал deploy hook.
 
 Подробные команды для обоих вариантов описаны в `docs/DEPLOY_PRODUCTION.md`.
+
+### 12.3 Фактическое состояние хоста на момент миграции
+
+По диагностике хоста `mnad-projest`:
+
+- `nginx` активен, `sudo nginx -t` проходит;
+- текущий web root фактически содержит `/var/www/html/index.html`;
+- старый repo-каталог есть в `/home/ubuntu/nextpath-ai-navigator`;
+- `node v18.19.1`, `npm 9.2.0`, `python 3.12.3`, `PostgreSQL 16.13` уже установлены;
+- `nextpath-backend.service` еще не создан;
+- PostgreSQL слушает `0.0.0.0:5432`, поэтому после запуска backend порт лучше закрыть наружу и вернуть БД на localhost.
+
+Для этого состояния добавлена отдельная пошаговая инструкция `docs/CURRENT_HOST_NEXT_STEPS.md`. Главное отличие от общего runbook: deploy script теперь по умолчанию публикует frontend в `/var/www/html`, чтобы сохранить текущий Nginx web root и не ломать существующие настройки HTTPS.

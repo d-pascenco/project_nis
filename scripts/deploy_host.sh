@@ -3,7 +3,7 @@ set -euo pipefail
 
 APP_DIR="${APP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 BACKEND_DIR="${BACKEND_DIR:-$APP_DIR/backend}"
-WEB_ROOT="${WEB_ROOT:-/var/www/nextpath}"
+WEB_ROOT="${WEB_ROOT:-/var/www/html}"
 SERVICE_NAME="${SERVICE_NAME:-nextpath-backend}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 

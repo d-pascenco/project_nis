@@ -18,7 +18,7 @@ cat /etc/os-release | grep PRETTY_NAME
 # Nginx и текущий web root
 sudo nginx -t
 sudo systemctl status nginx --no-pager
-sudo find /etc/nginx/sites-enabled -maxdepth 1 -type f -print -exec sed -n '1,220p' {} \;
+sudo find -L /etc/nginx/sites-enabled /etc/nginx/conf.d -maxdepth 1 -type f -print -exec sed -n '1,220p' {} \;
 sudo find /var/www -maxdepth 3 -type f \( -name 'index.html' -o -name '*.conf' \) -print
 
 # Что уже лежит в home ubuntu
@@ -47,7 +47,7 @@ sudo systemctl status nextpath-backend --no-pager || true
 Важно:
 
 - Nginx и Certbot/Cloudflare остаются как есть.
-- Frontend собирается в `dist/` и копируется в web root, например `/var/www/nextpath`.
+- Frontend собирается в `dist/` и копируется в текущий web root. На нашем хосте сейчас найден `/var/www/html`, поэтому deploy script по умолчанию использует именно его.
 - Backend запускается локально на `127.0.0.1:8000` через systemd.
 - PostgreSQL для backend должен быть доступен через `127.0.0.1:5432`; внешний порт `5432` лучше закрыть после того, как прямой доступ команде больше не нужен.
 
@@ -173,7 +173,7 @@ git push prod HEAD:main
 1. Находит frontend в `frontend/` или в корне репозитория.
 2. Устанавливает frontend-зависимости через `npm ci` или `npm install`.
 3. Собирает frontend через `npm run build`.
-4. Копирует `dist/` в `/var/www/nextpath`.
+4. Копирует `dist/` в web root. По умолчанию это `/var/www/html`, чтобы сохранить текущую настройку хоста.
 5. Создает/обновляет backend virtualenv.
 6. Устанавливает `backend/requirements.txt`.
 7. Применяет SQL `backend/sql/001_create_user_forms.sql`, если `psql` доступен.
@@ -187,10 +187,10 @@ cd /home/ubuntu/nextpath-ai-navigator
 bash scripts/deploy_host.sh
 ```
 
-Если web root должен остаться `/var/www/html`, можно запустить так:
+Если web root нужно переопределить, можно запустить так:
 
 ```bash
-WEB_ROOT=/var/www/html bash scripts/deploy_host.sh
+WEB_ROOT=/var/www/nextpath bash scripts/deploy_host.sh
 ```
 
 ## 6. Backend `.env` на хосте
@@ -271,7 +271,7 @@ sudo nano /etc/nginx/sites-enabled/default
 Внутри нужного `server { ... }` для `nextpath.su` должно быть примерно так:
 
 ```nginx
-root /var/www/nextpath;
+root /var/www/html;
 index index.html;
 
 location /api/ {
@@ -322,12 +322,12 @@ psql -h 127.0.0.1 -U nextpath_app -d nextpath -c "SELECT id, full_name, target_p
 Вернуть предыдущий backup web root:
 
 ```bash
-sudo rm -rf /var/www/nextpath/*
-sudo tar -xzf /home/ubuntu/backups/www-nextpath-DATE.tar.gz -C /
+sudo rm -rf /var/www/html/*
+sudo tar -xzf /home/ubuntu/backups/www-html-DATE.tar.gz -C /
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-Если раньше сайт лежал в `/var/www/html`, аналогично восстанови backup `www-html-*.tar.gz`.
+Если сайт был перенесен в `/var/www/nextpath`, аналогично восстанови backup `www-nextpath-*.tar.gz`.
 
 ### Repo rollback
 

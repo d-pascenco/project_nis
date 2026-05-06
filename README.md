@@ -6,7 +6,8 @@ Monorepo проекта NextPath.
 
 - `frontend/` — сайт NextPath, собирается в статический `dist/` и отдается через Nginx.
 - `backend/` — FastAPI API для onboarding-формы и записи данных в PostgreSQL.
-- `docs/DEPLOY_PRODUCTION.md` — инструкция по безопасному деплою на Oracle Ubuntu.
+- `docs/DEPLOY_PRODUCTION.md` — общая инструкция по безопасному деплою на Oracle Ubuntu.
+- `docs/CURRENT_HOST_NEXT_STEPS.md` — конкретный план для текущего хоста `mnad-projest` по твоему диагностическому выводу.
 - `scripts/deploy_host.sh` — helper-скрипт для сборки frontend, обновления backend и reload Nginx на production-хосте.
 - `wiki.md` — история настройки инфраструктуры и текущий workflow.
 
@@ -39,4 +40,7 @@ git pull --ff-only
 bash scripts/deploy_host.sh
 ```
 
-Подробная инструкция: [`docs/DEPLOY_PRODUCTION.md`](docs/DEPLOY_PRODUCTION.md).
+Подробные инструкции:
+
+- общий runbook: [`docs/DEPLOY_PRODUCTION.md`](docs/DEPLOY_PRODUCTION.md);
+- конкретно для текущего хоста: [`docs/CURRENT_HOST_NEXT_STEPS.md`](docs/CURRENT_HOST_NEXT_STEPS.md).
