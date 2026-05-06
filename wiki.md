@@ -462,10 +462,9 @@ sudo ss -tulnp | grep 5432
 
 ## 00. Что дальше планируется добавить
 Следующие этапы проекта:
-- AI-генерация персонализированного роудмапа через Claude API
-- валидация форм на фронтенде
 - добавление Docker / Docker Compose
 - оформление CI/CD
+- прогресс-трекинг внутри личного кабинета
 
 
 ## 11. Backend для формы сайта
@@ -848,8 +847,290 @@ psql -h 127.0.0.1 -U nextpath_app -d nextpath -c \
 | Навыки | — |
 | Ограничения | — |
 
-### 15.2 Реализация
+### 15.2 Обязательные поля (расширенный список)
 
-В `Onboarding.tsx` добавлена функция `isCurrentStepValid()`, которая проверяет наличие обязательных полей для текущего шага. При нажатии «Далее» с незаполненными полями переход не происходит, появляется сообщение «Заполните обязательные поля, отмеченные *».
+После ревью требований список обязательных полей был расширен:
 
-Обязательные поля в шагах помечены `*` красным цветом. Сообщение об ошибке сбрасывается при изменении любого поля или при переходе назад.
+| Шаг | Обязательные поля | Дополнительные условия |
+|-----|-------------------|------------------------|
+| О вас | Полное имя, Возраст, Город, Текущий статус | — |
+| Образование | Уровень образования, Учебное заведение, Специальность, Опыт работы | CV: минимум 300 символов |
+| Цели | Желаемая профессия, Индустрия, Срок, Приоритеты (≥1) | Мотивация: минимум 50 символов |
+| Навыки | — | — |
+| Ограничения | — | — |
+
+### 15.3 Реализация
+
+В `Onboarding.tsx` функция `getStepError()` возвращает конкретное сообщение для первого незаполненного поля текущего шага. При нажатии «Далее» с незаполненными полями переход не происходит и сообщение отображается под формой.
+
+Для полей с минимальной длиной добавлены счётчики символов прямо в UI:
+- CV: счётчик `X / 300`, красный пока не набрано 300 символов
+- Мотивация: счётчик `X / 50`, красный пока не набрано 50 символов
+
+Обязательные поля в шагах помечены `*` красным. Сообщение об ошибке сбрасывается при изменении любого поля или при переходе назад.
+
+## 16. AI-генерация персонального роудмапа через Groq
+
+### 16.1 Выбор провайдера
+
+Для генерации персонального плана развития подключён [Groq](https://console.groq.com) — бесплатный API с очень высокой скоростью инференса. Используется модель `llama-3.3-70b-versatile`.
+
+Преимущества перед OpenAI:
+- бесплатный tier без привязки карты
+- скорость генерации ~3–5 секунд на роудмап
+- достаточное качество для структурированного JSON-вывода
+
+### 16.2 Установка зависимости
+
+```bash
+pip install groq==0.13.0
+```
+
+В `backend/requirements.txt`:
+```
+groq==0.13.0
+```
+
+### 16.3 Переменная окружения
+
+```env
+GROQ_API_KEY=gsk_...  # ключ с console.groq.com
+```
+
+Добавляется в корневой `.env` на хосте. Если переменная не задана, endpoint возвращает `503` и фронтенд показывает статичный fallback-роудмап.
+
+### 16.4 Endpoint POST /api/roadmap
+
+Backend принимает те же camelCase-поля, что и `/api/forms`. Формирует промпт с профилем пользователя и запрашивает у Groq JSON-объект со структурой:
+
+```json
+{
+  "stages": [
+    {
+      "id": 1,
+      "title": "Основы Python",
+      "duration": "4 недели",
+      "skills": ["Python", "Jupyter", "NumPy"],
+      "resources": ["Stepik", "Kaggle", "YouTube"]
+    }
+  ],
+  "total_duration": "6 месяцев",
+  "summary": "..."
+}
+```
+
+Промпт учитывает: целевую профессию, индустрию, текущие навыки, часы в неделю, бюджет, предпочтение русского языка.
+
+Используется `response_format={"type": "json_object"}` для гарантированного JSON-вывода.
+
+### 16.5 Поток на фронтенде
+
+При нажатии «Создать карту»:
+
+1. Данные формы сохраняются в БД (`POST /api/forms`) — fire-and-forget, не блокирует UI.
+2. Показывается страница роудмапа с индикатором загрузки («Генерируем персональный план...»).
+3. Параллельно выполняется запрос к `POST /api/roadmap`.
+4. При успехе — отображается персональный план.
+5. При ошибке (503/502/network) — тихо показывается статичный fallback.
+
+### 16.6 Диагностика
+
+В консоли браузера (F12 → Console) виден лог:
+
+```
+[roadmap] generated: {stages: [...], total_duration: "...", summary: "..."}
+```
+
+Или при ошибке:
+
+```
+[roadmap] error response: 503 {detail: "Roadmap generation unavailable: GROQ_API_KEY not set"}
+[roadmap] fetch failed: TypeError: ...
+```
+
+На хосте ошибки логируются через `logging`:
+
+```bash
+journalctl -u nextpath-backend -f | grep roadmap
+```
+
+## 17. Авторизация через Google OAuth и личный кабинет
+
+### 17.1 Архитектура
+
+Авторизация построена на Google Identity Services (GIS) — пользователь нажимает кнопку «Войти через Google», Google возвращает ID-токен, бэкенд верифицирует токен и выдаёт собственный JWT.
+
+```text
+Браузер → Google (OAuth) → ID-токен → POST /api/auth/google → JWT → localStorage
+```
+
+JWT хранится в `localStorage` под ключом `nextpath_token`. Все защищённые запросы передают его в заголовке `Authorization: Bearer <token>`.
+
+### 17.2 Настройка Google Cloud
+
+1. Перейти на [console.cloud.google.com](https://console.cloud.google.com)
+2. Создать проект или выбрать существующий
+3. **APIs & Services** → **Credentials** → **Create Credentials** → **OAuth 2.0 Client ID**
+4. Application type: **Web application**
+5. Name: `NextPath` (только для консоли)
+6. **Authorized JavaScript origins:**
+   ```
+   https://nextpath.su
+   https://www.nextpath.su
+   http://localhost:5173
+   ```
+7. **Authorized redirect URIs:** оставить пустым — используется implicit flow через JavaScript origins
+8. Скопировать **Client ID** вида `1234567890-abc.apps.googleusercontent.com`
+
+### 17.3 Переменные окружения
+
+В корневом `.env` на хосте и локально:
+
+```env
+GOOGLE_CLIENT_ID=1234...apps.googleusercontent.com
+JWT_SECRET=любая-длинная-случайная-строка
+VITE_GOOGLE_CLIENT_ID=1234...apps.googleusercontent.com
+```
+
+`VITE_` префикс обязателен для Vite — только так переменная попадает в браузерный бандл.
+
+### 17.4 Backend-зависимости
+
+```bash
+pip install google-auth==2.38.0 python-jose[cryptography]==3.4.0
+```
+
+Верификация Google ID-токена:
+
+```python
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
+id_info = id_token.verify_oauth2_token(
+    credential,
+    google_requests.Request(),
+    GOOGLE_CLIENT_ID,
+)
+```
+
+После верификации создаётся или находится пользователь в таблице `users`, выдаётся JWT.
+
+### 17.5 Таблица users
+
+```sql
+CREATE TABLE IF NOT EXISTS users (
+    id          SERIAL PRIMARY KEY,
+    google_id   VARCHAR(255) NOT NULL UNIQUE,
+    email       VARCHAR(255) NOT NULL UNIQUE,
+    name        VARCHAR(255),
+    picture     TEXT,
+    roadmap     JSONB,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+
+Роудмап хранится как JSONB-объект прямо в строке пользователя.
+
+Применить миграцию на хосте:
+
+```bash
+psql -h 127.0.0.1 -U nextpath_app -d nextpath \
+  -f ~/project_nis/backend/sql/002_create_users.sql
+```
+
+### 17.6 Endpoints
+
+| Метод | URL | Описание |
+|-------|-----|----------|
+| `POST` | `/api/auth/google` | Верифицирует Google ID-токен, создаёт пользователя, возвращает JWT |
+| `GET` | `/api/me` | Возвращает профиль и сохранённый роудмап (требует Bearer) |
+| `POST` | `/api/me/roadmap` | Сохраняет роудмап пользователя (требует Bearer) |
+
+### 17.7 Frontend-пакет
+
+```bash
+npm install @react-oauth/google
+```
+
+В `App.tsx` весь граф компонентов оборачивается в `GoogleOAuthProvider`:
+
+```tsx
+import { GoogleOAuthProvider } from "@react-oauth/google";
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
+<GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+  ...
+</GoogleOAuthProvider>
+```
+
+### 17.8 Поток авторизации с сохранением роудмапа
+
+1. Пользователь просматривает сгенерированный роудмап.
+2. Нажимает «Войти и сохранить план» — открывается диалог с кнопкой Google.
+3. После успешного входа:
+   - JWT и данные пользователя сохраняются в `localStorage`.
+   - Если есть текущий роудмап — он сохраняется через `POST /api/me/roadmap`.
+   - Пользователь перенаправляется на `/profile`.
+4. На странице `/profile` отображается аватар, имя и сохранённый план.
+
+### 17.9 Утилиты auth (frontend/src/lib/auth.ts)
+
+```ts
+export const getToken = () => localStorage.getItem("nextpath_token");
+export const setToken = (t: string) => localStorage.setItem("nextpath_token", t);
+export const clearToken = () => { localStorage.removeItem("nextpath_token"); ... };
+export const isAuthenticated = () => !!getToken();
+export const authHeaders = () => ({ Authorization: `Bearer ${getToken()}`, ... });
+```
+
+## 18. UX-улучшения роудмапа
+
+### 18.1 Скачать план (PDF)
+
+Кнопка «Скачать план (PDF)» вызывает `window.print()`. Через `@media print` в `index.css` при печати скрывается всё кроме контейнера с роудмапом (`#roadmap-print`), кнопки навигации и прочие элементы с классом `no-print` тоже скрываются.
+
+```css
+@media print {
+  body > * { display: none !important; }
+  #roadmap-print { display: block !important; }
+  #roadmap-print .no-print { display: none !important; }
+}
+```
+
+Браузер сохраняет результат в PDF через стандартный диалог печати.
+
+### 18.2 Поделиться
+
+Кнопка «Поделиться» использует Web Share API там, где он поддерживается (мобильные браузеры, Safari). На остальных платформах — копирует текущий URL в буфер обмена и показывает сообщение «Ссылка скопирована!» на 2.5 секунды.
+
+```ts
+if (navigator.share) {
+  await navigator.share({ title: "Мой план развития — NextPath", url });
+} else {
+  await navigator.clipboard.writeText(url);
+}
+```
+
+### 18.3 Кликабельные ресурсы
+
+Ресурсы в каждом этапе роудмапа стали кликабельными ссылками. В компоненте `RoadmapPreview.tsx` есть маппинг популярных платформ на их URL:
+
+```ts
+const PLATFORM_LINKS = {
+  Stepik: "https://stepik.org/search",
+  Coursera: "https://www.coursera.org/search",
+  YouTube: "https://www.youtube.com/results",
+  ...
+};
+```
+
+Если платформа не найдена в маппинге — открывается Google-поиск по названию.
+
+### 18.4 Кнопка «Начать обучение»
+
+На первом (текущем) этапе роудмапа кнопка «Начать обучение» открывает в новой вкладке страницу первого ресурса этого этапа. Таким образом пользователь сразу попадает на нужную платформу.
+
+### 18.5 Навигация по логотипу
+
+Логотип NextPath в хедере кликабелен и ведёт на главную страницу (`/`) через `useNavigate`. На главной странице кнопка «Войти» ведёт на `/onboarding` (если не авторизован) или на `/profile` (если авторизован, показывается аватар пользователя).
