@@ -31,9 +31,9 @@ fi
 cd "$FRONTEND_DIR"
 
 if [ -f package-lock.json ]; then
-  npm ci
+  npm ci --prefer-offline --no-audit --no-fund
 else
-  npm install
+  npm install --prefer-offline --no-audit --no-fund
 fi
 
 npm run build
