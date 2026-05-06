@@ -56,6 +56,13 @@ class UserFormCreate(BaseModel):
     need_mentorship: bool | None = Field(default=None, validation_alias=AliasChoices("needMentorship", "need_mentorship"))
     additional_info: str | None = Field(default=None, validation_alias=AliasChoices("additionalInfo", "additional_info"))
 
+    @field_validator("age", "years_experience", "hours_per_week", mode="before")
+    @classmethod
+    def coerce_empty_string_to_none(cls, value: Any) -> Any:
+        if value == "" or value is None:
+            return None
+        return value
+
     @field_validator("priorities", "technical_skills", "soft_skills", mode="before")
     @classmethod
     def empty_list_for_none(cls, value: Any) -> Any:
