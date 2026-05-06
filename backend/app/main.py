@@ -1,17 +1,27 @@
 import json
+import logging
 import os
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from jose import JWTError, jwt
+from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.database import Base, engine, get_db
 from app.env import load_environment
-from app.models import UserForm
+from app.models import User, UserForm
 from app.schemas import UserFormCreate, UserFormResponse
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("nextpath")
+
 load_environment()
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+JWT_SECRET = os.getenv("JWT_SECRET", "change-this-in-production")
+JWT_ALGORITHM = "HS256"
 
 FRONTEND_ORIGINS = [
     origin.strip()
@@ -124,6 +134,102 @@ def generate_roadmap(form_data: UserFormCreate) -> dict:
             response_format={"type": "json_object"},
             temperature=0.7,
         )
-        return json.loads(completion.choices[0].message.content)
+        result = json.loads(completion.choices[0].message.content)
+        logger.info("Roadmap generated for profession=%s, stages=%d", form_data.target_profession, len(result.get("stages", [])))
+        return result
     except Exception as exc:
+        logger.error("Groq API error: %s", exc)
         raise HTTPException(status_code=502, detail=f"Groq API error: {exc}") from exc
+
+
+# ── Auth helpers ──────────────────────────────────────────────────────────────
+
+def _create_jwt(user_id: int) -> str:
+    return jwt.encode({"sub": str(user_id)}, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+def _get_user_id(authorization: str | None, db: Session) -> int:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token")
+    token = authorization[7:]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        return int(payload["sub"])
+    except JWTError as exc:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
+
+
+# ── Google OAuth ──────────────────────────────────────────────────────────────
+
+class GoogleCredential(BaseModel):
+    credential: str
+
+
+@app.post("/api/auth/google")
+def google_auth(payload: GoogleCredential, db: Session = Depends(get_db)) -> dict:
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="Google auth not configured: set GOOGLE_CLIENT_ID")
+    try:
+        from google.oauth2 import id_token
+        from google.auth.transport import requests as google_requests
+        id_info = id_token.verify_oauth2_token(
+            payload.credential,
+            google_requests.Request(),
+            GOOGLE_CLIENT_ID,
+        )
+    except Exception as exc:
+        logger.error("Google token verification failed: %s", exc)
+        raise HTTPException(status_code=401, detail="Invalid Google token") from exc
+
+    google_id = id_info["sub"]
+    email = id_info.get("email", "")
+    name = id_info.get("name", "")
+    picture = id_info.get("picture", "")
+
+    user = db.query(User).filter(User.google_id == google_id).first()
+    if not user:
+        user = User(google_id=google_id, email=email, name=name, picture=picture)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        logger.info("New user registered: %s", email)
+    else:
+        logger.info("User logged in: %s", email)
+
+    return {
+        "token": _create_jwt(user.id),
+        "user": {"id": user.id, "email": email, "name": name, "picture": picture},
+    }
+
+
+# ── Profile ───────────────────────────────────────────────────────────────────
+
+@app.get("/api/me")
+def get_me(authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> dict:
+    user_id = _get_user_id(authorization, db)
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "picture": user.picture,
+        "roadmap": user.roadmap,
+    }
+
+
+class RoadmapSave(BaseModel):
+    roadmap: dict
+
+
+@app.post("/api/me/roadmap")
+def save_roadmap(payload: RoadmapSave, authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> dict:
+    user_id = _get_user_id(authorization, db)
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.roadmap = payload.roadmap
+    db.commit()
+    logger.info("Roadmap saved for user_id=%d", user_id)
+    return {"ok": True}

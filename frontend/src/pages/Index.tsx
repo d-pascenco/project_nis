@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { ArrowRight, Sparkles, ChevronRight, Zap, Target, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { isAuthenticated, getUser } from "@/lib/auth";
 
 const features = [
   {
@@ -34,6 +35,8 @@ const capabilities = [
 
 const Index = () => {
   const navigate = useNavigate();
+  const loggedIn = isAuthenticated();
+  const user = getUser();
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
@@ -56,9 +59,16 @@ const Index = () => {
               <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                 Как это работает
               </a>
-              <Button variant="outline" size="sm" className="hover:border-primary hover:text-primary">
-                Войти
-              </Button>
+              {loggedIn ? (
+                <Button variant="outline" size="sm" onClick={() => navigate("/profile")} className="hover:border-primary hover:text-primary">
+                  {user?.picture && <img src={user.picture} alt="" className="w-5 h-5 rounded-full mr-1" />}
+                  Мой профиль
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => navigate("/onboarding")} className="hover:border-primary hover:text-primary">
+                  Войти
+                </Button>
+              )}
             </div>
           </div>
         </div>

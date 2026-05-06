@@ -162,10 +162,14 @@ const Onboarding = () => {
       });
       if (res.ok) {
         const data = await res.json();
+        console.log("[roadmap] generated:", data);
         setRoadmapData(data);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        console.error("[roadmap] error response:", res.status, err);
       }
-    } catch {
-      // показываем статичный fallback
+    } catch (err) {
+      console.error("[roadmap] fetch failed:", err);
     } finally {
       setRoadmapLoading(false);
     }
