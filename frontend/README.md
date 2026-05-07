@@ -1,73 +1,63 @@
-# Welcome to your Lovable project
+# NextPath Frontend
 
-## Project info
+React-приложение NextPath. Обслуживает два домена из одного бандла:
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+- **nextpath.su** — публичный лендинг + 5-шаговая онбординг-форма + просмотр роудмапа
+- **my.nextpath.su** — личный кабинет (профиль, прогресс, визуальный граф)
 
-## How can I edit this code?
+## Стек
 
-There are several ways of editing your application.
+React 18 · TypeScript · Vite · Tailwind CSS · shadcn/ui · react-router-dom · @react-oauth/google · html2canvas · jspdf
 
-**Use Lovable**
+## Разработка
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```bash
+npm install
+npm run dev        # http://localhost:5173
 ```
 
-**Edit a file directly in GitHub**
+В dev-режиме оба домена работают на одном `localhost:5173` — домен-разделение отключено.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Сборка
 
-**Use GitHub Codespaces**
+```bash
+NODE_OPTIONS="--max-old-space-size=512" npm run build
+# dist/ → /var/www/html/
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Структура `src/`
 
-## What technologies are used for this project?
+```
+pages/
+  Index.tsx           — лендинг nextpath.su
+  Onboarding.tsx      — 5-шаговая форма + показ роудмапа
+  Profile.tsx         — личный кабинет my.nextpath.su
 
-This project is built with:
+components/
+  RoadmapPreview.tsx  — карточки роудмапа + PDF + Share
+  RoadmapVisual.tsx   — fullscreen граф роудмапа (dark modal)
+  ProfileEditForm.tsx — редактирование профиля в кабинете
+  Autocomplete.tsx    — поле с подсказками (города, вузы, специальности)
+  Logo.tsx            — логотип-ссылка на /
+  steps/              — 5 шагов онбординга (BasicInfo, Education, Goals, Skills, Constraints)
+  ui/                 — компоненты shadcn/ui
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+lib/
+  auth.ts             — JWT в localStorage (getToken, setToken, authHeaders)
+  urls.ts             — логика доменов (IS_CABINET_DOMAIN, goToCabinet)
+  constants.ts        — PROFESSION_LABELS, TIMELINE_LABELS, STAGE_COLORS, getResourceUrl
+  suggestions.ts      — данные для Autocomplete (CITIES, UNIVERSITIES, SPECIALIZATIONS, LANGUAGES)
 
-## How can I deploy this project?
+types.ts              — RoadmapData, RoadmapStage, OnboardingFormData
+App.tsx               — домен-aware роутинг (CabinetRoutes / MainRoutes)
+```
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Переменные окружения (Vite)
 
-## Can I connect a custom domain to my Lovable project?
+Задаются в корневом `.env` с префиксом `VITE_` — Vite запекает их в бандл при сборке.
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+| Переменная | Значение в prod |
+|------------|----------------|
+| `VITE_GOOGLE_CLIENT_ID` | OAuth 2.0 Client ID |
+| `VITE_CABINET_URL` | `https://my.nextpath.su` |
+| `VITE_MAIN_URL` | `https://nextpath.su` |

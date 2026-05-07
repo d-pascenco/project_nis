@@ -1,24 +1,29 @@
 # NextPath
 
-Monorepo проекта NextPath.
+AI-система персонального карьерного сопровождения. Пользователь заполняет онбординг-анкету, получает персональный план развития от Llama 3.3 (Groq) и отслеживает прогресс в личном кабинете.
 
-## Структура
+**Продакшн:** https://nextpath.su · https://my.nextpath.su
 
-- `frontend/` — сайт NextPath, собирается в статический `dist/` и отдается через Nginx.
-- `backend/` — FastAPI API для onboarding-формы и записи данных в PostgreSQL.
-- `.env.example` — общий шаблон секретов для frontend/backend; реальный `.env` игнорируется Git.
-- `docs/DEPLOY_PRODUCTION.md` — общая инструкция по безопасному деплою на Oracle Ubuntu.
-- `docs/CURRENT_HOST_NEXT_STEPS.md` — конкретный план для текущего хоста `mnad-projest` по диагностическому выводу.
-- `docs/MIGRATE_HOST_TO_PROJECT_NIS.md` — точный план: удалить/архивировать старый `nextpath-ai-navigator` на хосте и поднять `/home/ubuntu/project_nis`.
-- `scripts/deploy_host.sh` — helper-скрипт для сборки frontend, обновления backend и reload Nginx на production-хосте.
-- `wiki.md` — история настройки инфраструктуры и текущий workflow.
+## Архитектура
 
-> В текущем рабочем дереве frontend-каталог может отсутствовать, если он еще не был подтянут в эту копию репозитория. Deploy-инструкция и скрипт рассчитаны на итоговую структуру monorepo с `frontend/` и `backend/`.
+```
+nextpath.su          → публичный сайт + форма онбординга
+my.nextpath.su       → личный кабинет пользователя
 
-## Backend локально
+frontend/            React + TypeScript + Vite + Tailwind + shadcn/ui
+backend/             FastAPI + SQLAlchemy + PostgreSQL
+scripts/             deploy_host.sh
+docs/                DEPLOY_PRODUCTION.md
+```
+
+Инфраструктура: Oracle Cloud Free Tier · Ubuntu 24.04 · Nginx · Cloudflare · Let's Encrypt · systemd.
+
+## Быстрый старт
+
+### Backend
 
 ```bash
-cp .env.example .env
+cp .env.example .env          # заполнить секреты
 cd backend
 python3 -m venv venv
 source venv/bin/activate
@@ -26,24 +31,47 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Проверка:
+Проверка: `curl http://127.0.0.1:8000/api/health`
+
+### Frontend
 
 ```bash
-curl http://127.0.0.1:8000/api/health
+cd frontend
+npm install
+npm run dev                   # http://localhost:5173
 ```
 
-## Production deploy
+## Переменные окружения
 
-Короткий вариант после первичной настройки хоста:
+Скопировать `.env.example` → `.env` и заполнить:
+
+| Переменная | Назначение |
+|------------|------------|
+| `DATABASE_URL` | PostgreSQL строка подключения |
+| `GROQ_API_KEY` | Ключ Groq API (бесплатно: console.groq.com) |
+| `GOOGLE_CLIENT_ID` | OAuth 2.0 Client ID из Google Cloud Console |
+| `JWT_SECRET` | Произвольная случайная строка для подписи JWT |
+| `VITE_GOOGLE_CLIENT_ID` | То же значение, что `GOOGLE_CLIENT_ID` (для Vite) |
+| `VITE_CABINET_URL` | URL кабинета в prod (`https://my.nextpath.su`) |
+| `VITE_MAIN_URL` | URL основного сайта в prod (`https://nextpath.su`) |
+
+## Деплой на хост
 
 ```bash
 cd /home/ubuntu/project_nis
-git pull --ff-only
-bash scripts/deploy_host.sh
+git pull origin main
+NODE_OPTIONS="--max-old-space-size=512" bash scripts/deploy_host.sh
 ```
 
-Подробные инструкции:
+Подробнее: [`docs/DEPLOY_PRODUCTION.md`](docs/DEPLOY_PRODUCTION.md).
 
-- общий runbook: [`docs/DEPLOY_PRODUCTION.md`](docs/DEPLOY_PRODUCTION.md);
-- конкретно для текущего хоста: [`docs/CURRENT_HOST_NEXT_STEPS.md`](docs/CURRENT_HOST_NEXT_STEPS.md);
-- миграция хоста на правильный `/home/ubuntu/project_nis`: [`docs/MIGRATE_HOST_TO_PROJECT_NIS.md`](docs/MIGRATE_HOST_TO_PROJECT_NIS.md).
+## База данных
+
+Миграции применяются скриптом `scripts/deploy_host.sh` автоматически (все `backend/sql/00*.sql` по порядку). Ручное применение:
+
+```bash
+psql -h 127.0.0.1 -U nextpath_app -d nextpath -f backend/sql/001_create_user_forms.sql
+psql -h 127.0.0.1 -U nextpath_app -d nextpath -f backend/sql/002_create_users.sql
+psql -h 127.0.0.1 -U nextpath_app -d nextpath -f backend/sql/003_alter_users_add_progress.sql
+psql -h 127.0.0.1 -U nextpath_app -d nextpath -f backend/sql/004_alter_users_add_form_data.sql
+```
