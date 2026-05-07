@@ -1,18 +1,4 @@
 import { useState } from "react";
-
-export interface RoadmapStage {
-  id: number;
-  title: string;
-  duration: string;
-  skills: string[];
-  resources: string[];
-}
-
-export interface RoadmapData {
-  stages: RoadmapStage[];
-  total_duration: string;
-  summary: string;
-}
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { StepIndicator } from "@/components/StepIndicator";
@@ -24,6 +10,7 @@ import { ConstraintsStep } from "@/components/steps/ConstraintsStep";
 import { RoadmapPreview } from "@/components/RoadmapPreview";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import type { RoadmapData, OnboardingFormData } from "@/types";
 
 const steps = [
   "О вас",
@@ -33,41 +20,7 @@ const steps = [
   "Ограничения",
 ];
 
-interface FormData {
-  // Basic Info
-  fullName: string;
-  age: string;
-  location: string;
-  currentStatus: string;
-  // Education
-  education: string;
-  university: string;
-  specialization: string;
-  yearsExperience: string;
-  currentRole: string;
-  cvSummary: string;
-  // Goals
-  targetProfession: string;
-  targetIndustry: string;
-  timeline: string;
-  motivation: string;
-  priorities: string[];
-  // Skills
-  technicalSkills: string[];
-  softSkills: string[];
-  languages: { name: string; level: number }[];
-  learningStyle: string;
-  // Constraints
-  hoursPerWeek: number;
-  budget: string;
-  healthConsiderations: string;
-  preferOnline: boolean;
-  preferRussian: boolean;
-  needMentorship: boolean;
-  additionalInfo: string;
-}
-
-const initialFormData: FormData = {
+const initialFormData: OnboardingFormData = {
   fullName: "",
   age: "",
   location: "",
@@ -99,14 +52,14 @@ const initialFormData: FormData = {
 const Onboarding = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState<FormData>(initialFormData);
+  const [formData, setFormData] = useState<OnboardingFormData>(initialFormData);
   const [showRoadmap, setShowRoadmap] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [roadmapData, setRoadmapData] = useState<RoadmapData | null>(null);
   const [roadmapLoading, setRoadmapLoading] = useState(false);
 
-  const updateFormData = (data: Partial<FormData>) => {
+  const updateFormData = (data: Partial<OnboardingFormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));
     setValidationError(null);
   };
@@ -162,14 +115,10 @@ const Onboarding = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        console.log("[roadmap] generated:", data);
         setRoadmapData(data);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        console.error("[roadmap] error response:", res.status, err);
       }
-    } catch (err) {
-      console.error("[roadmap] fetch failed:", err);
+    } catch {
+      // fallback: static roadmap shown
     } finally {
       setRoadmapLoading(false);
     }

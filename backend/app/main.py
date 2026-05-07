@@ -3,10 +3,14 @@ import logging
 import os
 import time
 import traceback
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from google.auth.transport import requests as google_requests
+from google.oauth2 import id_token as google_id_token
+from groq import Groq as GroqClient
 from jose import JWTError, jwt
 from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
@@ -49,7 +53,18 @@ logger.info("FRONTEND_ORIGINS: %s", FRONTEND_ORIGINS)
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
-app = FastAPI(title="NextPath Backend", version="0.3.0")
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    if CREATE_TABLES_ON_STARTUP:
+        try:
+            Base.metadata.create_all(bind=engine)
+            logger.info("DB tables verified/created")
+        except Exception as exc:
+            logger.error("Failed to create DB tables: %s", exc)
+    yield
+
+
+app = FastAPI(title="NextPath Backend", version="0.3.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -88,15 +103,6 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # ── Startup ───────────────────────────────────────────────────────────────────
-
-@app.on_event("startup")
-def startup() -> None:
-    if CREATE_TABLES_ON_STARTUP:
-        try:
-            Base.metadata.create_all(bind=engine)
-            logger.info("DB tables verified/created")
-        except Exception as exc:
-            logger.error("Failed to create DB tables: %s", exc)
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
@@ -143,8 +149,7 @@ def generate_roadmap(form_data: UserFormCreate) -> dict:
         raise HTTPException(status_code=503, detail="GROQ_API_KEY not set")
 
     try:
-        from groq import Groq
-        client = Groq(api_key=groq_api_key)
+        client = GroqClient(api_key=groq_api_key)
     except Exception as exc:
         logger.error("Groq client init failed: %s", exc)
         raise HTTPException(status_code=503, detail="Groq client init failed") from exc
@@ -214,9 +219,6 @@ class GoogleCredential(BaseModel):
 
 @app.post("/api/auth/google")
 def google_auth(payload: GoogleCredential, db: Session = Depends(get_db)) -> dict:
-    from google.oauth2 import id_token
-    from google.auth.transport import requests as google_requests
-
     logger.info("Google auth attempt (client_id configured: %s)", bool(GOOGLE_CLIENT_ID))
 
     id_info: dict | None = None
@@ -224,7 +226,7 @@ def google_auth(payload: GoogleCredential, db: Session = Depends(get_db)) -> dic
     # Try with audience check first
     if GOOGLE_CLIENT_ID:
         try:
-            id_info = id_token.verify_oauth2_token(payload.credential, google_requests.Request(), GOOGLE_CLIENT_ID)
+            id_info = google_id_token.verify_oauth2_token(payload.credential, google_requests.Request(), GOOGLE_CLIENT_ID)
             logger.info("Token verified with audience")
         except ValueError as exc:
             logger.warning("Audience check failed (%s), retrying without audience", exc)
@@ -232,7 +234,7 @@ def google_auth(payload: GoogleCredential, db: Session = Depends(get_db)) -> dic
     # Fallback: verify signature/expiry only
     if id_info is None:
         try:
-            id_info = id_token.verify_oauth2_token(payload.credential, google_requests.Request())
+            id_info = google_id_token.verify_oauth2_token(payload.credential, google_requests.Request())
             logger.info("Token verified without audience check")
         except Exception as exc:
             logger.error("Google token verification failed: %s\n%s", exc, traceback.format_exc())

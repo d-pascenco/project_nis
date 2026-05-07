@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { authHeaders, clearToken, getUser, isAuthenticated, setUser, AuthUser } from "@/lib/auth";
-import { RoadmapData } from "@/pages/Onboarding";
+import type { RoadmapData } from "@/types";
+import { STAGE_COLORS, getResourceUrl } from "@/lib/constants";
 import {
   LogOut, User, Map, Settings, LayoutDashboard, Clock, CheckCircle2,
   Circle, ExternalLink, ChevronRight, Pencil, Check, X, RefreshCw,
@@ -25,29 +26,6 @@ type Section = "overview" | "roadmap" | "profile" | "settings";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const PLATFORM_URLS: Record<string, string> = {
-  Stepik: "https://stepik.org/search", Coursera: "https://www.coursera.org/search",
-  YouTube: "https://www.youtube.com/results", GitHub: "https://github.com/search",
-  Хекслет: "https://ru.hexlet.io", freeCodeCamp: "https://www.freecodecamp.org",
-  Udemy: "https://www.udemy.com/courses/search", "JavaScript.info": "https://javascript.info",
-  MDN: "https://developer.mozilla.org/ru", LinkedIn: "https://www.linkedin.com",
-  Kaggle: "https://www.kaggle.com", Codecademy: "https://www.codecademy.com",
-};
-const resourceUrl = (name: string) => {
-  for (const [k, v] of Object.entries(PLATFORM_URLS)) {
-    if (name.toLowerCase().includes(k.toLowerCase())) return v;
-  }
-  return `https://www.google.com/search?q=${encodeURIComponent(name + " курс")}`;
-};
-
-const STAGE_COLORS = [
-  "text-primary border-primary/40 bg-primary/10",
-  "text-blue-600 border-blue-400/40 bg-blue-500/10",
-  "text-violet-600 border-violet-400/40 bg-violet-500/10",
-  "text-amber-600 border-amber-400/40 bg-amber-500/10",
-  "text-emerald-600 border-emerald-400/40 bg-emerald-500/10",
-  "text-rose-600 border-rose-400/40 bg-rose-500/10",
-];
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -285,7 +263,7 @@ const Profile = () => {
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {stage.resources.map((r) => (
-                            <a key={r} href={resourceUrl(r)} target="_blank" rel="noopener noreferrer">
+                            <a key={r} href={getResourceUrl(r)} target="_blank" rel="noopener noreferrer">
                               <Badge variant="outline" className="text-xs gap-1 hover:border-primary hover:text-primary transition-colors cursor-pointer">
                                 {r} <ExternalLink className="w-2.5 h-2.5" />
                               </Badge>

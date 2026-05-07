@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import {
   Clock, Download, Share2, Sparkles, Loader2, ExternalLink, ChevronRight,
 } from "lucide-react";
-import { RoadmapData } from "@/pages/Onboarding";
+import type { RoadmapData, RoadmapStage } from "@/types";
+import { PROFESSION_LABELS, TIMELINE_LABELS, STATUS_LABELS, STAGE_COLORS, getResourceUrl } from "@/lib/constants";
 import { setToken, setUser, isAuthenticated, authHeaders } from "@/lib/auth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -41,54 +42,12 @@ interface RoadmapPreviewProps {
 
 // ── Static fallback stages ────────────────────────────────────────────────────
 
-const FALLBACK_STAGES = [
+const FALLBACK_STAGES: RoadmapStage[] = [
   { id: 1, title: "Основы программирования", duration: "4 недели", skills: ["HTML/CSS", "JavaScript", "Git"], resources: ["freeCodeCamp", "Codecademy", "YouTube"] },
   { id: 2, title: "Углублённый JavaScript", duration: "6 недель", skills: ["ES6+", "Async/Await", "DOM"], resources: ["JavaScript.info", "Udemy", "MDN"] },
   { id: 3, title: "React-разработка", duration: "8 недель", skills: ["React Hooks", "State", "API"], resources: ["React Docs", "Scrimba", "Stepik"] },
   { id: 4, title: "Проектная практика", duration: "4 недели", skills: ["Portfolio", "Code Review"], resources: ["GitHub", "Frontend Mentor"] },
   { id: 5, title: "Подготовка к трудоустройству", duration: "4 недели", skills: ["Resume", "Interview"], resources: ["LinkedIn", "Хекслет"] },
-];
-
-const PLATFORM_URLS: Record<string, string> = {
-  Stepik: "https://stepik.org/search", Coursera: "https://www.coursera.org/search",
-  YouTube: "https://www.youtube.com/results", GitHub: "https://github.com/search",
-  Хекслет: "https://ru.hexlet.io", freeCodeCamp: "https://www.freecodecamp.org",
-  Udemy: "https://www.udemy.com/courses/search", "JavaScript.info": "https://javascript.info",
-  MDN: "https://developer.mozilla.org/ru", LinkedIn: "https://www.linkedin.com",
-  Kaggle: "https://www.kaggle.com", Codecademy: "https://www.codecademy.com",
-};
-
-const resourceUrl = (name: string) => {
-  for (const [k, v] of Object.entries(PLATFORM_URLS)) {
-    if (name.toLowerCase().includes(k.toLowerCase())) return v;
-  }
-  return `https://www.google.com/search?q=${encodeURIComponent(name + " курс")}`;
-};
-
-const PROFESSION_LABELS: Record<string, string> = {
-  frontend: "Frontend Developer", backend: "Backend Developer", fullstack: "Fullstack Developer",
-  "data-scientist": "Data Scientist", "ml-engineer": "ML Engineer", devops: "DevOps Engineer",
-  product: "Product Manager", designer: "UX/UI Designer", analyst: "Business Analyst", qa: "QA Engineer",
-};
-
-const TIMELINE_LABELS: Record<string, string> = {
-  "3months": "3 месяца", "6months": "6 месяцев", "1year": "1 год", "2years": "2 года", flexible: "Гибкий срок",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  student: "Студент", graduate: "Выпускник", employed: "Работаю",
-  unemployed: "В поиске работы", "career-change": "Меняю карьеру",
-};
-
-// ── Stage colors ──────────────────────────────────────────────────────────────
-
-const STAGE_COLORS = [
-  "bg-primary/10 border-primary/30 text-primary",
-  "bg-blue-500/10 border-blue-500/30 text-blue-600",
-  "bg-violet-500/10 border-violet-500/30 text-violet-600",
-  "bg-amber-500/10 border-amber-500/30 text-amber-600",
-  "bg-emerald-500/10 border-emerald-500/30 text-emerald-600",
-  "bg-rose-500/10 border-rose-500/30 text-rose-600",
 ];
 
 // ── Print Layout (portal — renders outside #root) ─────────────────────────────
@@ -97,7 +56,7 @@ const PrintLayout = ({ userData, formSnapshot, roadmapData, stages }: {
   userData: RoadmapPreviewProps["userData"];
   formSnapshot?: FormSnapshot;
   roadmapData?: RoadmapData | null;
-  stages: typeof FALLBACK_STAGES;
+  stages: RoadmapStage[];
 }) => createPortal(
   <div className="nextpath-print-root">
     <style>{`
@@ -420,7 +379,7 @@ export const RoadmapPreview = ({
                       <div className="text-xs text-muted-foreground mb-1.5">Ресурсы:</div>
                       <div className="flex flex-wrap gap-1.5">
                         {stage.resources.map((r) => (
-                          <a key={r} href={resourceUrl(r)} target="_blank" rel="noopener noreferrer">
+                          <a key={r} href={getResourceUrl(r)} target="_blank" rel="noopener noreferrer">
                             <Badge variant="outline" className="text-xs gap-1 hover:border-primary hover:text-primary transition-colors cursor-pointer">
                               {r} <ExternalLink className="w-2.5 h-2.5" />
                             </Badge>
@@ -502,7 +461,7 @@ export const RoadmapPreview = ({
           </DialogHeader>
           <div className="space-y-3 py-2">
             {stages.find((s) => s.id === showResources)?.resources.map((r) => (
-              <a key={r} href={resourceUrl(r)} target="_blank" rel="noopener noreferrer"
+              <a key={r} href={getResourceUrl(r)} target="_blank" rel="noopener noreferrer"
                 className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group">
                 <span className="font-medium text-sm">{r}</span>
                 <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
