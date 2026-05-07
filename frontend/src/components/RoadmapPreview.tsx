@@ -276,7 +276,7 @@ export const RoadmapPreview = ({
           body: JSON.stringify({ roadmap: roadmapData }),
         });
       }
-      goToCabinet();
+      goToCabinet("/profile", body.token);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Ошибка авторизации";
       setAuthError(msg);

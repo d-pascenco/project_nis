@@ -13,13 +13,19 @@ export const MAIN_ORIGIN: string = IS_DEV
   ? window.location.origin
   : (import.meta.env.VITE_MAIN_URL || "https://nextpath.su");
 
-/** Переход в кабинет (cross-domain в prod, navigate в dev) */
-export const goToCabinet = (path = "/profile"): void => {
+/**
+ * Переход в кабинет.
+ * В prod передаём token через URL-параметр ?t= —
+ * localStorage не шарится между поддоменами, поэтому
+ * my.nextpath.su сам сохраняет его при загрузке.
+ */
+export const goToCabinet = (path = "/profile", token?: string): void => {
   if (IS_DEV) {
     window.location.href = path;
-  } else {
-    window.location.href = CABINET_ORIGIN + path;
+    return;
   }
+  const qs = token ? `?t=${encodeURIComponent(token)}` : "";
+  window.location.href = CABINET_ORIGIN + path + qs;
 };
 
 /** Переход на основной сайт */

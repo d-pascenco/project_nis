@@ -1,16 +1,27 @@
-import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import Index from "./pages/Index";
 import Onboarding from "./pages/Onboarding";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
-import { IS_CABINET_DOMAIN, IS_DEV, CABINET_ORIGIN } from "./lib/urls";
-import { isAuthenticated } from "./lib/auth";
+import { IS_CABINET_DOMAIN, IS_DEV, CABINET_ORIGIN, MAIN_ORIGIN } from "./lib/urls";
+import { isAuthenticated, setToken } from "./lib/auth";
+
+// ── Cross-subdomain auth handshake ────────────────────────────────────────────
+// localStorage не шарится между nextpath.su и my.nextpath.su.
+// При редиректе передаём токен в ?t=, здесь сохраняем и чистим URL.
+if (IS_CABINET_DOMAIN) {
+  const params = new URLSearchParams(window.location.search);
+  const urlToken = params.get("t");
+  if (urlToken) {
+    setToken(urlToken);
+    window.history.replaceState({}, "", window.location.pathname);
+  }
+}
 
 const queryClient = new QueryClient();
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
@@ -26,19 +37,14 @@ const ProfileRedirect = () => {
   return null;
 };
 
-// Охрана кабинета: если не авторизован → на главный сайт
+// Охрана кабинета: синхронная проверка до рендера
+// (токен уже сохранён из URL выше, поэтому race condition отсутствует)
 const CabinetGuard = ({ children }: { children: React.ReactNode }) => {
-  const navigate = useNavigate();
-  useEffect(() => {
-    if (!isAuthenticated()) {
-      if (IS_DEV) {
-        navigate("/");
-      } else {
-        window.location.href = import.meta.env.VITE_MAIN_URL || "https://nextpath.su";
-      }
-    }
-  }, [navigate]);
-  return isAuthenticated() ? <>{children}</> : null;
+  if (!isAuthenticated()) {
+    if (!IS_DEV) window.location.replace(MAIN_ORIGIN);
+    return null;
+  }
+  return <>{children}</>;
 };
 
 // Маршруты для my.nextpath.su

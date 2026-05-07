@@ -60,7 +60,7 @@ const Index = () => {
       setToken(body.token);
       setUser(body.user);
       setShowLogin(false);
-      goToCabinet();
+      goToCabinet("/profile", body.token);
     } catch (e: unknown) {
       setLoginError(e instanceof Error ? e.message : "Ошибка входа");
     } finally {
