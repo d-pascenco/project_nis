@@ -1,5 +1,4 @@
-import { createPortal } from "react-dom";
-import { useState } from "react";
+import React, { useRef, useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,6 @@ import type { RoadmapData, RoadmapStage } from "@/types";
 import { PROFESSION_LABELS, TIMELINE_LABELS, STATUS_LABELS, STAGE_COLORS, getResourceUrl } from "@/lib/constants";
 import { setToken, setUser, isAuthenticated, authHeaders } from "@/lib/auth";
 import { goToCabinet } from "@/lib/urls";
-import { generateRoadmapPDF } from "@/lib/pdf";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -53,13 +51,13 @@ const FALLBACK_STAGES: RoadmapStage[] = [
 
 // ── Print Layout (portal — renders outside #root) ─────────────────────────────
 
-const PrintLayout = ({ userData, formSnapshot, roadmapData, stages }: {
+const PrintLayout = React.forwardRef<HTMLDivElement, {
   userData: RoadmapPreviewProps["userData"];
   formSnapshot?: FormSnapshot;
   roadmapData?: RoadmapData | null;
   stages: RoadmapStage[];
-}) => createPortal(
-  <div className="nextpath-print-root">
+}>(({ userData, formSnapshot, roadmapData, stages }, ref) => (
+  <div ref={ref} className="nextpath-print-root">
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
       .nextpath-print-root {
@@ -223,9 +221,9 @@ const PrintLayout = ({ userData, formSnapshot, roadmapData, stages }: {
         <span>nextpath.su</span>
       </div>
     </div>
-  </div>,
-  document.body,
-);
+  </div>
+));
+PrintLayout.displayName = "PrintLayout";
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -238,15 +236,59 @@ export const RoadmapPreview = ({
   const [authError, setAuthError] = useState<string | null>(null);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const stages = roadmapData?.stages ?? FALLBACK_STAGES;
   const profession = PROFESSION_LABELS[userData.targetProfession] || userData.targetProfession || "цели";
   const timeline = TIMELINE_LABELS[userData.timeline] || roadmapData?.total_duration || "6 месяцев";
 
   const handlePdf = async () => {
+    const el = printRef.current;
+    if (!el) return;
     setPdfLoading(true);
     try {
-      await generateRoadmapPDF(formSnapshot, roadmapData, stages, userData.fullName);
+      // Динамически импортируем чтобы не раздувать основной бандл
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+
+      // Временно делаем элемент захватываемым
+      const prev = el.style.cssText;
+      el.style.cssText = "position:fixed;top:0;left:0;width:800px;z-index:-9999;visibility:visible;";
+
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: false,
+        allowTaint: true,
+        backgroundColor: "#fdf8f4",
+        logging: false,
+        width: 800,
+        windowWidth: 800,
+      });
+
+      el.style.cssText = prev;
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.93);
+      const pdf = new jsPDF({ unit: "mm", format: "a4" });
+      const pageW = 210;
+      const pageH = 297;
+      const imgH = (canvas.height / canvas.width) * pageW;
+
+      let heightLeft = imgH;
+      let posY = 0;
+      pdf.addImage(imgData, "JPEG", 0, posY, pageW, imgH);
+      heightLeft -= pageH;
+      while (heightLeft > 0) {
+        posY -= pageH;
+        pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, posY, pageW, imgH);
+        heightLeft -= pageH;
+      }
+
+      pdf.save("nextpath-план.pdf");
+    } catch (err) {
+      console.error("[PDF]", err);
     } finally {
       setPdfLoading(false);
     }
@@ -297,8 +339,10 @@ export const RoadmapPreview = ({
 
   return (
     <>
-      {/* Print layout — rendered via portal outside #root */}
-      <PrintLayout userData={userData} formSnapshot={formSnapshot} roadmapData={roadmapData} stages={stages} />
+      {/* Скрытый блок для захвата html2canvas при генерации PDF */}
+      <div style={{ position: "fixed", top: 0, left: 0, width: "800px", visibility: "hidden", zIndex: -9999, pointerEvents: "none" }}>
+        <PrintLayout ref={printRef} userData={userData} formSnapshot={formSnapshot} roadmapData={roadmapData} stages={stages} />
+      </div>
 
       <div className="space-y-10 animate-fade-in">
 

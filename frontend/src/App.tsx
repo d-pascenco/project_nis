@@ -14,12 +14,15 @@ import { isAuthenticated, setToken } from "./lib/auth";
 // ── Cross-subdomain auth handshake ────────────────────────────────────────────
 // localStorage не шарится между nextpath.su и my.nextpath.su.
 // При редиректе передаём токен в ?t=, здесь сохраняем и чистим URL.
+console.log("[App] hostname:", window.location.hostname, "IS_CABINET_DOMAIN:", IS_CABINET_DOMAIN, "IS_DEV:", IS_DEV);
 if (IS_CABINET_DOMAIN) {
   const params = new URLSearchParams(window.location.search);
   const urlToken = params.get("t");
+  console.log("[App] cabinet: urlToken present:", !!urlToken, "current auth:", isAuthenticated());
   if (urlToken) {
     setToken(urlToken);
     window.history.replaceState({}, "", window.location.pathname);
+    console.log("[App] token saved from URL, isAuthenticated now:", isAuthenticated());
   }
 }
 

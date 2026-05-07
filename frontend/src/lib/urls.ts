@@ -2,6 +2,9 @@ const hostname = typeof window !== "undefined" ? window.location.hostname : "";
 
 export const IS_DEV = import.meta.env.DEV;
 
+// Лог для диагностики — видно в консоли браузера
+console.log("[urls] hostname:", hostname, "IS_DEV:", IS_DEV);
+
 // Домен кабинета — my.nextpath.su
 export const IS_CABINET_DOMAIN = hostname.startsWith("my.");
 
@@ -20,12 +23,9 @@ export const MAIN_ORIGIN: string = IS_DEV
  * my.nextpath.su сам сохраняет его при загрузке.
  */
 export const goToCabinet = (path = "/profile", token?: string): void => {
-  if (IS_DEV) {
-    window.location.href = path;
-    return;
-  }
-  const qs = token ? `?t=${encodeURIComponent(token)}` : "";
-  window.location.href = CABINET_ORIGIN + path + qs;
+  const url = IS_DEV ? path : CABINET_ORIGIN + path + (token ? `?t=${encodeURIComponent(token)}` : "");
+  console.log("[auth] goToCabinet →", url, { IS_DEV, CABINET_ORIGIN });
+  window.location.href = url;
 };
 
 /** Переход на основной сайт */
