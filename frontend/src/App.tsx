@@ -1,67 +1,152 @@
+import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
-import { GoogleOAuthProvider } from "@react-oauth/google";
+import { GoogleLogin, GoogleOAuthProvider } from "@react-oauth/google";
+import { Loader2, Sparkles } from "lucide-react";
 import Index from "./pages/Index";
 import Onboarding from "./pages/Onboarding";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
-import { IS_CABINET_DOMAIN, IS_DEV, CABINET_ORIGIN, MAIN_ORIGIN } from "./lib/urls";
-import { isAuthenticated, setToken } from "./lib/auth";
+import { Logo } from "./components/Logo";
+import { IS_CABINET_DOMAIN, IS_DEV, CABINET_ORIGIN } from "./lib/urls";
+import { isAuthenticated, setToken, setUser } from "./lib/auth";
 
-// ── Cross-subdomain auth handshake ────────────────────────────────────────────
-// localStorage не шарится между nextpath.su и my.nextpath.su.
-// При редиректе передаём токен в ?t=, здесь сохраняем и чистим URL.
-console.log("[App] hostname:", window.location.hostname, "IS_CABINET_DOMAIN:", IS_CABINET_DOMAIN, "IS_DEV:", IS_DEV);
+// ── Cross-subdomain handshake ─────────────────────────────────────────────────
+// nextpath.su и my.nextpath.su имеют разные localStorage.
+// Токен передаётся через ?t= при редиректе — сохраняем здесь до первого рендера.
 if (IS_CABINET_DOMAIN) {
   const params = new URLSearchParams(window.location.search);
   const urlToken = params.get("t");
-  console.log("[App] cabinet: urlToken present:", !!urlToken, "current auth:", isAuthenticated());
+  console.log("[App] cabinet domain. urlToken:", !!urlToken, "authed:", isAuthenticated());
   if (urlToken) {
     setToken(urlToken);
     window.history.replaceState({}, "", window.location.pathname);
-    console.log("[App] token saved from URL, isAuthenticated now:", isAuthenticated());
+    console.log("[App] token saved from URL");
   }
 }
 
 const queryClient = new QueryClient();
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
-// Редирект /profile на my.nextpath.su в prod
-const ProfileRedirect = () => {
-  useEffect(() => {
-    if (!IS_DEV) {
-      window.location.href = CABINET_ORIGIN + "/profile";
+// ── Страница входа для my.nextpath.su ─────────────────────────────────────────
+// Показывается когда пользователь открывает кабинет без авторизации.
+// Авторизация происходит прямо здесь, без редиректов.
+const CabinetLoginPage = ({ onAuth }: { onAuth: () => void }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSuccess = async (resp: { credential?: string }) => {
+    if (!resp.credential) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential: resp.credential }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.detail || `Ошибка ${res.status}`);
+      setToken(body.token);
+      setUser(body.user);
+      console.log("[App] login success on cabinet domain");
+      onAuth();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Ошибка входа");
+    } finally {
+      setLoading(false);
     }
-  }, []);
-  if (IS_DEV) return <Profile />;
-  return null;
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+      <div className="w-full max-w-sm space-y-8">
+        <div className="flex justify-center">
+          <Logo size="lg" />
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-8 text-center space-y-6">
+          <div>
+            <h1 className="text-2xl font-serif text-foreground mb-2">Личный кабинет</h1>
+            <p className="text-sm text-muted-foreground">
+              Войдите через Google чтобы увидеть свой план развития
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 text-muted-foreground py-4">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <span>Входим...</span>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-3">
+              <GoogleLogin
+                onSuccess={handleSuccess}
+                onError={() => setError("Не удалось войти через Google")}
+                locale="ru"
+                text="signin_with"
+                shape="rectangular"
+                size="large"
+              />
+              {error && <p className="text-sm text-destructive">{error}</p>}
+            </div>
+          )}
+
+          <div className="pt-2 border-t border-border/50">
+            <p className="text-xs text-muted-foreground">
+              Нет аккаунта?{" "}
+              <a
+                href={IS_DEV ? "/onboarding" : (import.meta.env.VITE_MAIN_URL || "https://nextpath.su") + "/onboarding"}
+                className="text-primary hover:underline"
+              >
+                Создать план развития
+              </a>
+            </p>
+          </div>
+        </div>
+
+        <div className="text-center">
+          <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            NextPath — AI-система карьерного сопровождения
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
-// Охрана кабинета: синхронная проверка до рендера
-// (токен уже сохранён из URL выше, поэтому race condition отсутствует)
+// ── Охрана кабинета ───────────────────────────────────────────────────────────
+// Вместо редиректа показывает страницу входа прямо на my.nextpath.su.
 const CabinetGuard = ({ children }: { children: React.ReactNode }) => {
-  if (!isAuthenticated()) {
-    if (!IS_DEV) window.location.replace(MAIN_ORIGIN);
-    return null;
+  const [authed, setAuthed] = useState(isAuthenticated());
+  if (!authed) {
+    return <CabinetLoginPage onAuth={() => setAuthed(true)} />;
   }
   return <>{children}</>;
 };
 
-// Маршруты для my.nextpath.su
+// ── Редирект /profile → my.nextpath.su ───────────────────────────────────────
+const ProfileRedirect = () => {
+  if (!IS_DEV) {
+    window.location.replace(CABINET_ORIGIN + "/profile");
+    return null;
+  }
+  return <Profile />;
+};
+
+// ── Маршруты my.nextpath.su ───────────────────────────────────────────────────
 const CabinetRoutes = () => (
   <Routes>
     <Route path="/" element={<Navigate to="/profile" replace />} />
-    <Route path="/profile" element={
-      <CabinetGuard><Profile /></CabinetGuard>
-    } />
+    <Route path="/profile" element={<CabinetGuard><Profile /></CabinetGuard>} />
     <Route path="*" element={<Navigate to="/profile" replace />} />
   </Routes>
 );
 
-// Маршруты для nextpath.su
+// ── Маршруты nextpath.su ──────────────────────────────────────────────────────
 const MainRoutes = () => (
   <Routes>
     <Route path="/" element={<Index />} />
