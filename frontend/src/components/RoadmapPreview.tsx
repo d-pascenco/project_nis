@@ -1,10 +1,11 @@
 import React, { useRef, useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
+import { RoadmapVisual } from "@/components/RoadmapVisual";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Clock, Download, Share2, Sparkles, Loader2, ExternalLink, ChevronRight,
+  Clock, Download, Share2, Sparkles, Loader2, ExternalLink, ChevronRight, GitBranch,
 } from "lucide-react";
 import type { RoadmapData, RoadmapStage } from "@/types";
 import { PROFESSION_LABELS, TIMELINE_LABELS, STATUS_LABELS, STAGE_COLORS, getResourceUrl } from "@/lib/constants";
@@ -250,6 +251,7 @@ export const RoadmapPreview = ({
   const [authError, setAuthError] = useState<string | null>(null);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [visualOpen, setVisualOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
 
   const stages = roadmapData?.stages ?? FALLBACK_STAGES;
@@ -496,11 +498,21 @@ export const RoadmapPreview = ({
 
         {/* Action buttons */}
         {!hideActions && !isLoading && (
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button variant="hero" size="lg" onClick={handlePdf} disabled={pdfLoading}>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
+            {roadmapData && (
+              <Button
+                variant="hero"
+                size="lg"
+                onClick={() => setVisualOpen(true)}
+                className="bg-gradient-to-r from-primary to-primary/80 shadow-lg"
+              >
+                <GitBranch className="w-4 h-4" /> Карта развития
+              </Button>
+            )}
+            <Button variant="outline" size="lg" onClick={handlePdf} disabled={pdfLoading}>
               {pdfLoading
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Генерируем PDF...</>
-                : <><Download className="w-4 h-4" /> Скачать план (PDF)</>
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> PDF...</>
+                : <><Download className="w-4 h-4" /> Скачать PDF</>
               }
             </Button>
             <Button variant="outline" size="lg" onClick={handleShare}>
@@ -566,6 +578,18 @@ export const RoadmapPreview = ({
         </DialogContent>
       </Dialog>
 
+      {/* Visual roadmap modal */}
+      {roadmapData && (
+        <RoadmapVisual
+          open={visualOpen}
+          onClose={() => setVisualOpen(false)}
+          roadmapData={roadmapData}
+          userName={userData.fullName}
+          targetProfession={userData.targetProfession}
+          currentRole={formSnapshot?.currentRole}
+          technicalSkills={formSnapshot?.technicalSkills}
+        />
+      )}
     </>
   );
 };

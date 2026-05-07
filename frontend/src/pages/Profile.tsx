@@ -11,10 +11,12 @@ import { authHeaders, clearToken, getUser, isAuthenticated, setUser, AuthUser } 
 import type { RoadmapData, OnboardingFormData } from "@/types";
 import { STAGE_COLORS, getResourceUrl } from "@/lib/constants";
 import { ProfileEditForm } from "@/components/ProfileEditForm";
+import { RoadmapVisual, RoadmapVisualButton } from "@/components/RoadmapVisual";
+import type { OnboardingFormData } from "@/types";
 import {
   LogOut, User, Map, Settings, LayoutDashboard, Clock, CheckCircle2,
   ExternalLink, ChevronRight, Pencil, Check, X, RefreshCw,
-  BookOpen, Award, Target, Sparkles,
+  BookOpen, Award, Target, Sparkles, Download,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -24,6 +26,58 @@ interface UserData extends AuthUser {
   form_data: Partial<OnboardingFormData> | null;
   completed_stages: number[];
 }
+
+// helper: generate PDF from saved profile data (reuses html2canvas approach)
+const downloadProfilePDF = async (userData: UserData) => {
+  if (!userData.roadmap) return;
+  const { RoadmapPreview } = await import("@/components/RoadmapPreview");
+  // Trigger PDF via a hidden mount — simplest: dispatch click on a hidden button
+  // For cabinet we create a temporary print wrapper
+  const { jsPDF } = await import("jspdf");
+  const { default: html2canvas } = await import("html2canvas");
+
+  const container = document.createElement("div");
+  container.style.cssText = "position:fixed;top:0;left:0;width:800px;visibility:hidden;z-index:-9999;background:#fdf8f4;";
+  document.body.appendChild(container);
+
+  const { createRoot } = await import("react-dom/client");
+  const root = createRoot(container);
+  const React = await import("react");
+  root.render(
+    React.createElement(RoadmapPreview, {
+      userData: {
+        fullName: userData.name || "",
+        targetProfession: userData.form_data?.targetProfession || "",
+        timeline: userData.form_data?.timeline || "",
+      },
+      roadmapData: userData.roadmap,
+      isLoading: false,
+      hideActions: true,
+      formSnapshot: userData.form_data || undefined,
+    })
+  );
+
+  await new Promise((r) => setTimeout(r, 500));
+  container.style.visibility = "visible";
+
+  const canvas = await html2canvas(container, {
+    scale: 1.8, useCORS: false, allowTaint: true,
+    backgroundColor: "#fdf8f4", logging: false, width: 800, windowWidth: 800,
+  });
+
+  container.style.visibility = "hidden";
+  root.unmount();
+  document.body.removeChild(container);
+
+  const pdf = new jsPDF({ unit: "mm", format: "a4" });
+  const pageW = 210, pageH = 297;
+  const imgH = (canvas.height / canvas.width) * pageW;
+  let y = 0;
+  pdf.addImage(canvas.toDataURL("image/jpeg", 0.93), "JPEG", 0, y, pageW, imgH);
+  let left = imgH - pageH;
+  while (left > 0) { y -= pageH; pdf.addPage(); pdf.addImage(canvas.toDataURL("image/jpeg", 0.93), "JPEG", 0, y, pageW, imgH); left -= pageH; }
+  pdf.save("nextpath-план.pdf");
+};
 
 type Section = "overview" | "roadmap" | "profile" | "settings";
 
@@ -42,6 +96,8 @@ const Profile = () => {
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [editFormOpen, setEditFormOpen] = useState(false);
+  const [visualOpen, setVisualOpen] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const progressSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Load user ──────────────────────────────────────────────────────────────
@@ -141,6 +197,22 @@ const Profile = () => {
       </div>
 
       {/* Stats row */}
+      {/* Quick action buttons */}
+      {userData.roadmap && (
+        <div className="flex flex-wrap gap-3">
+          <RoadmapVisualButton onClick={() => setVisualOpen(true)} />
+          <Button
+            variant="outline"
+            size="default"
+            disabled={pdfLoading}
+            onClick={async () => { setPdfLoading(true); try { await downloadProfilePDF(userData); } finally { setPdfLoading(false); } }}
+          >
+            <Download className="w-4 h-4" />
+            {pdfLoading ? "Генерируем..." : "Скачать PDF"}
+          </Button>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { icon: BookOpen, label: "Всего этапов", value: totalStages || "—" },
@@ -206,11 +278,16 @@ const Profile = () => {
 
   const renderRoadmap = () => (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-2xl font-serif text-foreground">Мой план</h2>
-        {totalStages > 0 && (
-          <span className="text-sm text-muted-foreground">{doneCount}/{totalStages} выполнено</span>
-        )}
+        <div className="flex items-center gap-2">
+          {totalStages > 0 && (
+            <span className="text-sm text-muted-foreground">{doneCount}/{totalStages} выполнено</span>
+          )}
+          {userData.roadmap && (
+            <RoadmapVisualButton onClick={() => setVisualOpen(true)} size="sm" />
+          )}
+        </div>
       </div>
 
       {totalStages > 0 && <Progress value={progressPct} className="h-2" />}
@@ -513,6 +590,20 @@ const Profile = () => {
           setSection("roadmap");
         }}
       />
+
+      {/* Визуальный роудмап */}
+      {userData.roadmap && (
+        <RoadmapVisual
+          open={visualOpen}
+          onClose={() => setVisualOpen(false)}
+          roadmapData={userData.roadmap}
+          userName={userData.name || ""}
+          targetProfession={userData.form_data?.targetProfession || ""}
+          currentRole={userData.form_data?.currentRole || ""}
+          technicalSkills={userData.form_data?.technicalSkills}
+          completedStages={completedStages}
+        />
+      )}
     </div>
   );
 };
