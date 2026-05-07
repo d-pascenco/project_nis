@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { BasicInfoStep } from "@/components/steps/BasicInfoStep";
 import { EducationStep } from "@/components/steps/EducationStep";
@@ -8,13 +8,14 @@ import { ConstraintsStep } from "@/components/steps/ConstraintsStep";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { authHeaders } from "@/lib/auth";
 import type { OnboardingFormData, RoadmapData } from "@/types";
-import { Loader2, RefreshCw, Save } from "lucide-react";
+import { Loader2, RefreshCw, Save, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface ProfileEditFormProps {
   open: boolean;
   onClose: () => void;
   initialData: Partial<OnboardingFormData>;
   onRoadmapUpdated: (roadmap: RoadmapData) => void;
+  onFormSaved?: () => void;
 }
 
 const DEFAULT: OnboardingFormData = {
@@ -32,43 +33,51 @@ const DEFAULT: OnboardingFormData = {
 
 const SECTIONS = ["О вас", "Образование", "Цели", "Навыки", "Ограничения"];
 
-export const ProfileEditForm = ({ open, onClose, initialData, onRoadmapUpdated }: ProfileEditFormProps) => {
+export const ProfileEditForm = ({ open, onClose, initialData, onRoadmapUpdated, onFormSaved }: ProfileEditFormProps) => {
   const [formData, setFormData] = useState<OnboardingFormData>({ ...DEFAULT, ...initialData });
   const [saving, setSaving] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
   const [activeSection, setActiveSection] = useState(0);
-  const [saved, setSaved] = useState(false);
+  const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+
+  // Обновляем форму когда initialData меняется (новые данные загрузились)
+  useEffect(() => {
+    setFormData({ ...DEFAULT, ...initialData });
+  }, [initialData]);
 
   const update = (data: Partial<OnboardingFormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));
-    setSaved(false);
+    setStatus("idle");
   };
 
+  // Сохранить данные формы без пересчёта роудмапа
   const handleSave = async () => {
     setSaving(true);
+    setStatus("idle");
     setError(null);
     try {
-      const res = await fetch("/api/me/recalculate", {
+      const res = await fetch("/api/me/save-form", {
         method: "POST",
         headers: authHeaders(),
         body: JSON.stringify({ form_data: formData }),
       });
-      // save only — don't use the returned roadmap yet
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || `Ошибка ${res.status}`);
-      }
-      setSaved(true);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.detail || `Ошибка ${res.status}`);
+      setStatus("saved");
+      onFormSaved?.();
     } catch (e: unknown) {
+      setStatus("error");
       setError(e instanceof Error ? e.message : "Ошибка сохранения");
     } finally {
       setSaving(false);
     }
   };
 
+  // Сохранить данные + пересчитать роудмап через AI
   const handleRecalculate = async () => {
     setRecalculating(true);
+    setStatus("idle");
     setError(null);
     try {
       const res = await fetch("/api/me/recalculate", {
@@ -76,14 +85,12 @@ export const ProfileEditForm = ({ open, onClose, initialData, onRoadmapUpdated }
         headers: authHeaders(),
         body: JSON.stringify({ form_data: formData }),
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.detail || `Ошибка ${res.status}`);
-      }
-      const roadmap = await res.json();
-      onRoadmapUpdated(roadmap);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.detail || `Ошибка ${res.status}`);
+      onRoadmapUpdated(body as RoadmapData);
       onClose();
     } catch (e: unknown) {
+      setStatus("error");
       setError(e instanceof Error ? e.message : "Ошибка генерации плана");
     } finally {
       setRecalculating(false);
@@ -128,13 +135,16 @@ export const ProfileEditForm = ({ open, onClose, initialData, onRoadmapUpdated }
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto flex flex-col">
-        <SheetHeader>
+      <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0">
+        <div className="px-6 pt-6 pb-4 border-b border-border shrink-0">
           <SheetTitle className="font-serif text-xl">Редактировать профиль</SheetTitle>
-        </SheetHeader>
+          <p className="text-sm text-muted-foreground mt-1">
+            Изменения сохраняются в вашем аккаунте
+          </p>
+        </div>
 
         {/* Section tabs */}
-        <div className="flex gap-1 flex-wrap mt-4 mb-2">
+        <div className="flex gap-1 flex-wrap px-4 py-3 border-b border-border shrink-0">
           {SECTIONS.map((s, i) => (
             <button
               key={s}
@@ -150,16 +160,29 @@ export const ProfileEditForm = ({ open, onClose, initialData, onRoadmapUpdated }
           ))}
         </div>
 
-        {/* Form section */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Form content — scrollable */}
+        <div className="flex-1 overflow-y-auto px-4 py-4">
           {renderSection()}
         </div>
 
-        {/* Actions */}
-        <div className="pt-4 border-t border-border space-y-3 shrink-0">
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          {saved && <p className="text-sm text-primary">Данные сохранены</p>}
+        {/* Actions — sticky bottom */}
+        <div className="px-4 py-4 border-t border-border bg-background shrink-0 space-y-3">
 
+          {/* Status feedback */}
+          {status === "saved" && (
+            <div className="flex items-center gap-2 text-sm text-primary">
+              <CheckCircle2 className="w-4 h-4" />
+              Данные сохранены
+            </div>
+          )}
+          {status === "error" && error && (
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          {/* Buttons */}
           <div className="flex gap-3">
             <Button
               variant="outline"
@@ -179,13 +202,14 @@ export const ProfileEditForm = ({ open, onClose, initialData, onRoadmapUpdated }
               disabled={saving || recalculating}
             >
               {recalculating
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Пересчёт...</>
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Пересчёт AI...</>
                 : <><RefreshCw className="w-4 h-4" /> Обновить план</>
               }
             </Button>
           </div>
+
           <p className="text-xs text-muted-foreground text-center">
-            «Сохранить» — только данные. «Обновить план» — данные + новый роудмап через AI.
+            «Сохранить» — только данные &nbsp;•&nbsp; «Обновить план» — новый AI-роудмап
           </p>
         </div>
       </SheetContent>
