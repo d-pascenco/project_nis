@@ -134,12 +134,19 @@ export const ConstraintsStep = ({ data, onChange }: ConstraintsStepProps) => {
 
         {/* Additional info */}
         <div className="space-y-2">
-          <Label htmlFor="additional">Дополнительная информация</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="additional">Дополнительная информация</Label>
+            {data.additionalInfo.length > 400 && (
+              <span className={`text-xs ${data.additionalInfo.length > 500 ? "text-destructive" : "text-muted-foreground"}`}>
+                {data.additionalInfo.length} / 500
+              </span>
+            )}
+          </div>
           <Textarea
             id="additional"
-            placeholder="Укажите любую дополнительную информацию, которая может помочь нам составить для вас оптимальный план развития..."
+            placeholder="Любые пожелания к плану: предпочтительное время занятий, особые цели, что уже пробовали..."
             value={data.additionalInfo}
-            onChange={(e) => onChange({ additionalInfo: e.target.value })}
+            onChange={(e) => { if (e.target.value.length <= 500) onChange({ additionalInfo: e.target.value }); }}
             className="min-h-[100px] resize-none"
           />
         </div>
