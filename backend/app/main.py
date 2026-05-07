@@ -285,12 +285,95 @@ def get_me(authorization: str | None = Header(default=None), db: Session = Depen
         "name": user.name,
         "picture": user.picture,
         "roadmap": user.roadmap,
+        "form_data": user.form_data,
         "completed_stages": user.completed_stages or [],
     }
 
 
 class RoadmapSave(BaseModel):
     roadmap: dict
+
+
+class RecalculatePayload(BaseModel):
+    form_data: dict
+
+
+@app.post("/api/me/recalculate")
+def recalculate_roadmap(
+    payload: RecalculatePayload,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Сохраняет обновлённые данные формы и пересчитывает роудмап через Groq."""
+    user_id = _get_user_id(authorization, db)
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Сохраняем новые данные формы
+    try:
+        user.form_data = payload.form_data
+        db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.error("DB error saving form_data: %s", exc)
+        raise HTTPException(status_code=503, detail="Database error") from exc
+
+    # Генерируем новый роудмап (переиспользуем логику /api/roadmap)
+    try:
+        form = UserFormCreate(**payload.form_data)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Invalid form data: {exc}") from exc
+
+    groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
+    if not groq_api_key:
+        raise HTTPException(status_code=503, detail="GROQ_API_KEY not set")
+
+    client = GroqClient(api_key=groq_api_key)
+    lang = "на русском языке" if form.prefer_russian is not False else "in English"
+    skills = ", ".join(form.technical_skills) if form.technical_skills else "не указаны"
+    hours = form.hours_per_week or 10
+
+    prompt = f"""Ты карьерный консультант. Составь персональный план развития {lang}.
+
+Профиль:
+- Цель: {form.target_profession or "не указана"}
+- Индустрия: {form.target_industry or "любая"}
+- Срок: {form.timeline or "не указан"}
+- Текущие навыки: {skills}
+- Текущая роль: {form.current_role or "не указана"}
+- Часов в неделю: {hours}
+- Бюджет: {form.budget or "не указан"}
+
+Верни ТОЛЬКО валидный JSON без markdown:
+{{"stages":[{{"id":1,"title":"...","duration":"...","skills":["..."],"resources":["..."]}}],"total_duration":"...","summary":"..."}}
+
+Правила: 4-6 этапов, сроки под {hours} ч/нед, resources — реальные платформы, весь текст {lang}"""
+
+    try:
+        completion = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
+            temperature=0.7,
+        )
+        roadmap = json.loads(completion.choices[0].message.content)
+    except Exception as exc:
+        logger.error("Groq error in recalculate: %s", exc)
+        raise HTTPException(status_code=502, detail=f"Groq API error: {exc}") from exc
+
+    # Сохраняем новый роудмап и сбрасываем прогресс
+    try:
+        user.roadmap = roadmap
+        user.completed_stages = []
+        db.commit()
+        logger.info("Roadmap recalculated for user_id=%d", user_id)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        logger.error("DB error saving recalculated roadmap: %s", exc)
+        raise HTTPException(status_code=503, detail="Database error") from exc
+
+    return roadmap
 
 
 @app.post("/api/me/roadmap")

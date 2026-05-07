@@ -57,11 +57,14 @@ const PrintLayout = React.forwardRef<HTMLDivElement, {
   roadmapData?: RoadmapData | null;
   stages: RoadmapStage[];
 }>(({ userData, formSnapshot, roadmapData, stages }, ref) => (
-  <div ref={ref} className="nextpath-print-root">
+  <div
+    ref={ref}
+    className="nextpath-print-root"
+    style={{ position: "absolute", left: "-9999px", top: 0, width: "800px", visibility: "hidden" }}
+  >
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
       .nextpath-print-root {
-        font-family: 'DM Sans', Arial, sans-serif;
+        font-family: Arial, Helvetica, sans-serif;
         color: #1a1208;
         background: #fdf8f4;
         padding: 0;
@@ -247,27 +250,29 @@ export const RoadmapPreview = ({
     if (!el) return;
     setPdfLoading(true);
     try {
-      // Динамически импортируем чтобы не раздувать основной бандл
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
         import("html2canvas"),
         import("jspdf"),
       ]);
 
-      // Временно делаем элемент захватываемым
-      const prev = el.style.cssText;
-      el.style.cssText = "position:fixed;top:0;left:0;width:800px;z-index:-9999;visibility:visible;";
+      // Делаем элемент видимым для захвата
+      el.style.visibility = "visible";
+      el.style.left = "0";
 
       const canvas = await html2canvas(el, {
-        scale: 2,
+        scale: 1.8,
         useCORS: false,
         allowTaint: true,
         backgroundColor: "#fdf8f4",
         logging: false,
         width: 800,
         windowWidth: 800,
+        scrollX: 0,
+        scrollY: 0,
       });
 
-      el.style.cssText = prev;
+      el.style.visibility = "hidden";
+      el.style.left = "-9999px";
 
       const imgData = canvas.toDataURL("image/jpeg", 0.93);
       const pdf = new jsPDF({ unit: "mm", format: "a4" });
@@ -320,12 +325,19 @@ export const RoadmapPreview = ({
       if (!authRes.ok) throw new Error(body.detail || `Ошибка ${authRes.status}`);
       setToken(body.token);
       setUser(body.user);
-      if (roadmapData) {
+      // Сохраняем роудмап и данные формы одним запросом через recalculate
+      if (roadmapData && formSnapshot) {
+        await fetch("/api/me/recalculate", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ form_data: formSnapshot }),
+        }).catch(() => {});
+      } else if (roadmapData) {
         await fetch("/api/me/roadmap", {
           method: "POST",
           headers: authHeaders(),
           body: JSON.stringify({ roadmap: roadmapData }),
-        });
+        }).catch(() => {});
       }
       goToCabinet("/profile", body.token);
     } catch (err: unknown) {
@@ -339,10 +351,14 @@ export const RoadmapPreview = ({
 
   return (
     <>
-      {/* Скрытый блок для захвата html2canvas при генерации PDF */}
-      <div style={{ position: "fixed", top: 0, left: 0, width: "800px", visibility: "hidden", zIndex: -9999, pointerEvents: "none" }}>
-        <PrintLayout ref={printRef} userData={userData} formSnapshot={formSnapshot} roadmapData={roadmapData} stages={stages} />
-      </div>
+      {/* Скрытый блок для html2canvas — position:absolute вне экрана */}
+      <PrintLayout
+        ref={printRef}
+        userData={userData}
+        formSnapshot={formSnapshot}
+        roadmapData={roadmapData}
+        stages={stages}
+      />
 
       <div className="space-y-10 animate-fade-in">
 

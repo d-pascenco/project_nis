@@ -8,11 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { authHeaders, clearToken, getUser, isAuthenticated, setUser, AuthUser } from "@/lib/auth";
-import type { RoadmapData } from "@/types";
+import type { RoadmapData, OnboardingFormData } from "@/types";
 import { STAGE_COLORS, getResourceUrl } from "@/lib/constants";
+import { ProfileEditForm } from "@/components/ProfileEditForm";
 import {
   LogOut, User, Map, Settings, LayoutDashboard, Clock, CheckCircle2,
-  Circle, ExternalLink, ChevronRight, Pencil, Check, X, RefreshCw,
+  ExternalLink, ChevronRight, Pencil, Check, X, RefreshCw,
   BookOpen, Award, Target, Sparkles,
 } from "lucide-react";
 
@@ -20,6 +21,7 @@ import {
 
 interface UserData extends AuthUser {
   roadmap: RoadmapData | null;
+  form_data: Partial<OnboardingFormData> | null;
   completed_stages: number[];
 }
 
@@ -39,6 +41,7 @@ const Profile = () => {
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [editFormOpen, setEditFormOpen] = useState(false);
   const progressSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Load user ──────────────────────────────────────────────────────────────
@@ -407,11 +410,16 @@ const Profile = () => {
       <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
         <h3 className="font-semibold text-foreground">Дорожная карта</h3>
         <p className="text-sm text-muted-foreground">
-          Создайте новый персональный план, заполнив анкету повторно.
+          Отредактируйте данные профиля и пересчитайте план прямо здесь.
         </p>
-        <Button variant="outline" onClick={() => goToMainSite("/onboarding")}>
-          <RefreshCw className="w-4 h-4" /> Обновить план развития
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <Button variant="outline" onClick={() => setEditFormOpen(true)}>
+            <Pencil className="w-4 h-4" /> Редактировать профиль
+          </Button>
+          <Button variant="hero" onClick={() => setEditFormOpen(true)}>
+            <RefreshCw className="w-4 h-4" /> Обновить план
+          </Button>
+        </div>
       </div>
 
       <div className="bg-destructive/5 border border-destructive/20 rounded-2xl p-6 space-y-3">
@@ -493,6 +501,18 @@ const Profile = () => {
           </main>
         </div>
       </div>
+
+      {/* Форма редактирования профиля */}
+      <ProfileEditForm
+        open={editFormOpen}
+        onClose={() => setEditFormOpen(false)}
+        initialData={userData.form_data ?? {}}
+        onRoadmapUpdated={(newRoadmap) => {
+          setUserData((prev) => prev ? { ...prev, roadmap: newRoadmap } : prev);
+          setCompletedStages([]);
+          setSection("roadmap");
+        }}
+      />
     </div>
   );
 };
