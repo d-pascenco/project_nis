@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
-import { ArrowRight, Sparkles, ChevronRight, Zap, Target, TrendingUp } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { GoogleLogin } from "@react-oauth/google";
+import { ArrowRight, Sparkles, ChevronRight, Zap, Target, TrendingUp, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { isAuthenticated, getUser } from "@/lib/auth";
+import { isAuthenticated, getUser, setToken, setUser } from "@/lib/auth";
 
 const features = [
   {
@@ -37,6 +40,32 @@ const Index = () => {
   const navigate = useNavigate();
   const loggedIn = isAuthenticated();
   const user = getUser();
+  const [showLogin, setShowLogin] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  const handleGoogleSuccess = async (resp: { credential?: string }) => {
+    if (!resp.credential) return;
+    setLoginLoading(true);
+    setLoginError(null);
+    try {
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential: resp.credential }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.detail || "Ошибка входа");
+      setToken(body.token);
+      setUser(body.user);
+      setShowLogin(false);
+      navigate("/profile");
+    } catch (e: unknown) {
+      setLoginError(e instanceof Error ? e.message : "Ошибка входа");
+    } finally {
+      setLoginLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
@@ -65,7 +94,7 @@ const Index = () => {
                   Мой профиль
                 </Button>
               ) : (
-                <Button variant="outline" size="sm" onClick={() => navigate("/onboarding")} className="hover:border-primary hover:text-primary">
+                <Button variant="outline" size="sm" onClick={() => { setLoginError(null); setShowLogin(true); }} className="hover:border-primary hover:text-primary">
                   Войти
                 </Button>
               )}
@@ -270,6 +299,38 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Login dialog */}
+      <Dialog open={showLogin} onOpenChange={setShowLogin}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl">Войти в NextPath</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4">
+            {loginLoading ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                Входим...
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground text-center">
+                  Войдите, чтобы сохранить дорожную карту и отслеживать прогресс
+                </p>
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={() => setLoginError("Не удалось войти через Google")}
+                  locale="ru"
+                  text="signin_with"
+                  shape="rectangular"
+                  size="large"
+                />
+                {loginError && <p className="text-sm text-destructive">{loginError}</p>}
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <footer className="py-10 px-6 border-t border-border bg-secondary/20">

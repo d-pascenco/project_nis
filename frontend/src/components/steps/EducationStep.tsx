@@ -3,6 +3,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormCard } from "@/components/FormCard";
+import { Autocomplete } from "@/components/Autocomplete";
+import { UNIVERSITIES, SPECIALIZATIONS } from "@/lib/suggestions";
 import { GraduationCap, Briefcase, FileText } from "lucide-react";
 
 interface EducationStepProps {
@@ -18,6 +20,11 @@ interface EducationStepProps {
 }
 
 export const EducationStep = ({ data, onChange }: EducationStepProps) => {
+  const handleYears = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, "").slice(0, 2);
+    onChange({ yearsExperience: val });
+  };
+
   return (
     <FormCard title="Образование и опыт">
       <div className="space-y-6">
@@ -26,10 +33,7 @@ export const EducationStep = ({ data, onChange }: EducationStepProps) => {
             <GraduationCap className="w-4 h-4 text-primary" />
             Уровень образования <span className="text-destructive">*</span>
           </Label>
-          <Select
-            value={data.education}
-            onValueChange={(value) => onChange({ education: value })}
-          >
+          <Select value={data.education} onValueChange={(v) => onChange({ education: v })}>
             <SelectTrigger className="h-12">
               <SelectValue placeholder="Выберите уровень образования" />
             </SelectTrigger>
@@ -45,24 +49,28 @@ export const EducationStep = ({ data, onChange }: EducationStepProps) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <Label htmlFor="university">Учебное заведение <span className="text-destructive">*</span></Label>
-            <Input
+            <Label htmlFor="university">
+              Учебное заведение <span className="text-destructive">*</span>
+            </Label>
+            <Autocomplete
               id="university"
-              placeholder="МГУ им. Ломоносова"
               value={data.university}
-              onChange={(e) => onChange({ university: e.target.value })}
-              className="h-12"
+              onChange={(v) => onChange({ university: v })}
+              suggestions={UNIVERSITIES}
+              placeholder="МГУ им. Ломоносова"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="specialization">Специальность <span className="text-destructive">*</span></Label>
-            <Input
+            <Label htmlFor="specialization">
+              Специальность <span className="text-destructive">*</span>
+            </Label>
+            <Autocomplete
               id="specialization"
-              placeholder="Информационные технологии"
               value={data.specialization}
-              onChange={(e) => onChange({ specialization: e.target.value })}
-              className="h-12"
+              onChange={(v) => onChange({ specialization: v })}
+              suggestions={SPECIALIZATIONS}
+              placeholder="Программная инженерия"
             />
           </div>
         </div>
@@ -75,12 +83,16 @@ export const EducationStep = ({ data, onChange }: EducationStepProps) => {
             </Label>
             <Input
               id="experience"
-              type="number"
+              inputMode="numeric"
               placeholder="3"
               value={data.yearsExperience}
-              onChange={(e) => onChange({ yearsExperience: e.target.value })}
+              onChange={handleYears}
               className="h-12"
+              maxLength={2}
             />
+            {data.yearsExperience && Number(data.yearsExperience) > 50 && (
+              <p className="text-xs text-destructive">Проверьте значение</p>
+            )}
           </div>
 
           <div className="space-y-2">

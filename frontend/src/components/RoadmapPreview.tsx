@@ -101,68 +101,168 @@ const PrintLayout = ({ userData, formSnapshot, roadmapData, stages }: {
 }) => createPortal(
   <div className="nextpath-print-root">
     <style>{`
-      .nextpath-print-root { font-family: 'DM Sans', Arial, sans-serif; color: #1a1a1a; padding: 40px; max-width: 700px; }
-      .nextpath-print-root h1 { font-size: 26px; margin-bottom: 4px; color: #c0623e; }
-      .nextpath-print-root h2 { font-size: 16px; margin: 24px 0 8px; border-bottom: 1px solid #e5e5e5; padding-bottom: 4px; }
-      .nextpath-print-root h3 { font-size: 14px; margin: 16px 0 4px; }
-      .nextpath-print-root p, .nextpath-print-root li { font-size: 13px; margin: 2px 0; color: #444; }
-      .nextpath-print-root ul { padding-left: 20px; }
-      .nextpath-print-root .meta { display: flex; gap: 32px; margin: 8px 0 24px; }
-      .nextpath-print-root .meta span { font-size: 12px; color: #666; }
-      .nextpath-print-root .stage { margin: 12px 0; padding: 12px; border: 1px solid #e5e5e5; border-radius: 8px; }
-      .nextpath-print-root .stage-title { font-weight: bold; font-size: 14px; }
-      .nextpath-print-root .arrow { text-align: center; font-size: 18px; color: #c0623e; margin: 4px 0; }
-      .nextpath-print-root .section-info { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-      .nextpath-print-root .info-row { font-size: 12px; }
-      .nextpath-print-root .info-row b { color: #333; }
+      @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+      .nextpath-print-root {
+        font-family: 'DM Sans', Arial, sans-serif;
+        color: #1a1208;
+        background: #fdf8f4;
+        padding: 0;
+        margin: 0;
+      }
+      .np-page { padding: 40px 48px; max-width: 780px; margin: 0 auto; }
+      /* Header */
+      .np-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding-bottom: 20px; border-bottom: 2px solid #c0623e; margin-bottom: 28px;
+      }
+      .np-logo { font-size: 26px; font-weight: 600; color: #c0623e; letter-spacing: -0.5px; }
+      .np-logo span { color: #1a1208; }
+      .np-meta { font-size: 11px; color: #888; text-align: right; line-height: 1.6; }
+      /* Sections */
+      .np-section { margin-bottom: 28px; }
+      .np-section-title {
+        font-size: 13px; font-weight: 600; color: #c0623e;
+        text-transform: uppercase; letter-spacing: 0.8px;
+        margin-bottom: 12px; padding-bottom: 6px;
+        border-bottom: 1px solid #f0e8df;
+      }
+      /* Info grid */
+      .np-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; }
+      .np-field { }
+      .np-field-label { font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+      .np-field-value { font-size: 13px; color: #1a1208; font-weight: 500; }
+      /* Summary */
+      .np-summary {
+        background: #fff8f5; border-left: 3px solid #c0623e;
+        padding: 12px 16px; border-radius: 0 8px 8px 0;
+        font-size: 13px; color: #444; line-height: 1.6;
+      }
+      /* Stages */
+      .np-stage {
+        background: #fff; border: 1px solid #ede5dc;
+        border-radius: 10px; padding: 16px 20px; margin-bottom: 4px;
+      }
+      .np-stage-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+      .np-stage-num {
+        width: 28px; height: 28px; border-radius: 50%;
+        background: #c0623e; color: #fff;
+        font-size: 12px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center; shrink: 0;
+        flex-shrink: 0;
+      }
+      .np-stage-title { font-size: 14px; font-weight: 600; color: #1a1208; }
+      .np-stage-dur { font-size: 11px; color: #999; margin-left: auto; }
+      .np-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+      .np-chip {
+        font-size: 11px; padding: 2px 8px; border-radius: 20px;
+        background: #f5ede6; color: #7a3a1e; font-weight: 500;
+      }
+      .np-chip-res {
+        font-size: 11px; padding: 2px 8px; border-radius: 20px;
+        border: 1px solid #ddd; color: #555;
+      }
+      .np-label { font-size: 10px; color: #aaa; margin-bottom: 4px; }
+      .np-arrow { text-align: center; color: #c0623e; font-size: 16px; margin: 2px 0; }
+      /* Footer */
+      .np-footer {
+        margin-top: 32px; padding-top: 16px; border-top: 1px solid #ede5dc;
+        display: flex; justify-content: space-between;
+        font-size: 11px; color: #aaa;
+      }
     `}</style>
 
-    <h1>NextPath — Персональный план развития</h1>
-    <div className="meta">
-      <span>Дата: {new Date().toLocaleDateString("ru-RU")}</span>
-      <span>nextpath.su</span>
-    </div>
-
-    <h2>Профиль</h2>
-    <div className="section-info">
-      <div className="info-row"><b>Имя:</b> {formSnapshot?.fullName || userData.fullName}</div>
-      <div className="info-row"><b>Возраст:</b> {formSnapshot?.age || "—"}</div>
-      <div className="info-row"><b>Город:</b> {formSnapshot?.location || "—"}</div>
-      <div className="info-row"><b>Статус:</b> {STATUS_LABELS[formSnapshot?.currentStatus || ""] || formSnapshot?.currentStatus || "—"}</div>
-      <div className="info-row"><b>Образование:</b> {formSnapshot?.university || "—"}{formSnapshot?.specialization ? `, ${formSnapshot.specialization}` : ""}</div>
-      <div className="info-row"><b>Опыт:</b> {formSnapshot?.yearsExperience ? `${formSnapshot.yearsExperience} лет` : "—"}</div>
-      <div className="info-row"><b>Текущая роль:</b> {formSnapshot?.currentRole || "—"}</div>
-      <div className="info-row"><b>Навыки:</b> {formSnapshot?.technicalSkills?.join(", ") || "—"}</div>
-    </div>
-
-    <h2>Цель</h2>
-    <div className="section-info">
-      <div className="info-row"><b>Профессия:</b> {PROFESSION_LABELS[formSnapshot?.targetProfession || ""] || formSnapshot?.targetProfession || "—"}</div>
-      <div className="info-row"><b>Индустрия:</b> {formSnapshot?.targetIndustry || "—"}</div>
-      <div className="info-row"><b>Срок:</b> {TIMELINE_LABELS[formSnapshot?.timeline || ""] || roadmapData?.total_duration || "—"}</div>
-      <div className="info-row"><b>Часов/неделю:</b> {formSnapshot?.hoursPerWeek || "—"}</div>
-    </div>
-
-    {roadmapData?.summary && (
-      <>
-        <h2>Резюме плана</h2>
-        <p>{roadmapData.summary}</p>
-      </>
-    )}
-
-    <h2>Дорожная карта</h2>
-    {stages.map((stage, i) => (
-      <div key={stage.id}>
-        <div className="stage">
-          <div className="stage-title">{i + 1}. {stage.title}</div>
-          <p><b>Срок:</b> {stage.duration}</p>
-          <p><b>Навыки:</b></p>
-          <ul>{stage.skills.map((s) => <li key={s}>{s}</li>)}</ul>
-          <p><b>Ресурсы:</b> {stage.resources.join(", ")}</p>
+    <div className="np-page">
+      {/* Header */}
+      <div className="np-header">
+        <div className="np-logo">Next<span>Path</span></div>
+        <div className="np-meta">
+          Персональный план развития<br />
+          Создан: {new Date().toLocaleDateString("ru-RU")}<br />
+          nextpath.su
         </div>
-        {i < stages.length - 1 && <div className="arrow">↓</div>}
       </div>
-    ))}
+
+      {/* Profile */}
+      <div className="np-section">
+        <div className="np-section-title">Профиль</div>
+        <div className="np-grid">
+          {[
+            ["Имя", formSnapshot?.fullName || userData.fullName],
+            ["Возраст", formSnapshot?.age ? `${formSnapshot.age} лет` : "—"],
+            ["Город", formSnapshot?.location || "—"],
+            ["Статус", STATUS_LABELS[formSnapshot?.currentStatus || ""] || "—"],
+            ["Образование", formSnapshot?.university || "—"],
+            ["Специальность", formSnapshot?.specialization || "—"],
+            ["Опыт работы", formSnapshot?.yearsExperience ? `${formSnapshot.yearsExperience} лет` : "—"],
+            ["Текущая роль", formSnapshot?.currentRole || "—"],
+          ].map(([label, value]) => (
+            <div key={label} className="np-field">
+              <div className="np-field-label">{label}</div>
+              <div className="np-field-value">{value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Goal */}
+      <div className="np-section">
+        <div className="np-section-title">Карьерная цель</div>
+        <div className="np-grid">
+          {[
+            ["Целевая профессия", PROFESSION_LABELS[formSnapshot?.targetProfession || ""] || formSnapshot?.targetProfession || "—"],
+            ["Индустрия", formSnapshot?.targetIndustry || "—"],
+            ["Срок", TIMELINE_LABELS[formSnapshot?.timeline || ""] || roadmapData?.total_duration || "—"],
+            ["Часов в неделю", formSnapshot?.hoursPerWeek ? `${formSnapshot.hoursPerWeek} ч/нед` : "—"],
+            ["Навыки", formSnapshot?.technicalSkills?.join(", ") || "—"],
+            ["Бюджет", formSnapshot?.budget || "—"],
+          ].map(([label, value]) => (
+            <div key={label} className="np-field">
+              <div className="np-field-label">{label}</div>
+              <div className="np-field-value">{value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary */}
+      {roadmapData?.summary && (
+        <div className="np-section">
+          <div className="np-section-title">О плане</div>
+          <div className="np-summary">{roadmapData.summary}</div>
+        </div>
+      )}
+
+      {/* Roadmap */}
+      <div className="np-section">
+        <div className="np-section-title">Дорожная карта</div>
+        {stages.map((stage, i) => (
+          <div key={stage.id}>
+            <div className="np-stage">
+              <div className="np-stage-header">
+                <div className="np-stage-num">{String(i + 1).padStart(2, "0")}</div>
+                <div className="np-stage-title">{stage.title}</div>
+                <div className="np-stage-dur">⏱ {stage.duration}</div>
+              </div>
+              <div className="np-label">Навыки:</div>
+              <div className="np-chips">
+                {stage.skills.map((s) => <span key={s} className="np-chip">{s}</span>)}
+              </div>
+              <div className="np-label">Ресурсы:</div>
+              <div className="np-chips">
+                {stage.resources.map((r) => <span key={r} className="np-chip-res">{r}</span>)}
+              </div>
+            </div>
+            {i < stages.length - 1 && <div className="np-arrow">↓</div>}
+          </div>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="np-footer">
+        <span>NextPath — AI-система персонального карьерного сопровождения</span>
+        <span>nextpath.su</span>
+      </div>
+    </div>
   </div>,
   document.body,
 );
