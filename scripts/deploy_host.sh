@@ -36,7 +36,7 @@ else
   npm install --prefer-offline --no-audit --no-fund
 fi
 
-npm run build
+NODE_OPTIONS="--max-old-space-size=512" npm run build
 
 if [ ! -d "$FRONTEND_DIR/dist" ]; then
   echo "ERROR: frontend build directory '$FRONTEND_DIR/dist' was not created." >&2
