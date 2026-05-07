@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { goToMainSite } from "@/lib/urls";
 import { Logo } from "@/components/Logo";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -96,7 +97,7 @@ const Profile = () => {
     finally { setSavingName(false); }
   };
 
-  const handleLogout = () => { clearToken(); navigate("/"); };
+  const handleLogout = () => { clearToken(); goToMainSite(); };
 
   // ── Guards ─────────────────────────────────────────────────────────────────
 
@@ -192,7 +193,7 @@ const Profile = () => {
       {!userData.roadmap && (
         <div className="bg-card border border-border rounded-2xl p-8 text-center space-y-4">
           <p className="text-muted-foreground">У вас пока нет дорожной карты.</p>
-          <Button variant="hero" onClick={() => navigate("/onboarding")}>
+          <Button variant="hero" onClick={() => goToMainSite("/onboarding")}>
             <Sparkles className="w-4 h-4" /> Создать план развития
           </Button>
         </div>
@@ -215,7 +216,7 @@ const Profile = () => {
         <div className="text-center py-16 text-muted-foreground">
           <Map className="w-10 h-10 mx-auto mb-3 opacity-30" />
           <p>Дорожная карта ещё не создана.</p>
-          <Button className="mt-4" variant="hero" onClick={() => navigate("/onboarding")}>
+          <Button className="mt-4" variant="hero" onClick={() => goToMainSite("/onboarding")}>
             Создать план
           </Button>
         </div>
@@ -408,7 +409,7 @@ const Profile = () => {
         <p className="text-sm text-muted-foreground">
           Создайте новый персональный план, заполнив анкету повторно.
         </p>
-        <Button variant="outline" onClick={() => navigate("/onboarding")}>
+        <Button variant="outline" onClick={() => goToMainSite("/onboarding")}>
           <RefreshCw className="w-4 h-4" /> Обновить план развития
         </Button>
       </div>

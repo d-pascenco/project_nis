@@ -6,6 +6,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { ArrowRight, Sparkles, ChevronRight, Zap, Target, TrendingUp, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { isAuthenticated, getUser, setToken, setUser } from "@/lib/auth";
+import { goToCabinet, CABINET_ORIGIN } from "@/lib/urls";
 
 const features = [
   {
@@ -59,7 +60,7 @@ const Index = () => {
       setToken(body.token);
       setUser(body.user);
       setShowLogin(false);
-      navigate("/profile");
+      goToCabinet();
     } catch (e: unknown) {
       setLoginError(e instanceof Error ? e.message : "Ошибка входа");
     } finally {
@@ -89,7 +90,7 @@ const Index = () => {
                 Как это работает
               </a>
               {loggedIn ? (
-                <Button variant="outline" size="sm" onClick={() => navigate("/profile")} className="hover:border-primary hover:text-primary">
+                <Button variant="outline" size="sm" onClick={() => goToCabinet()} className="hover:border-primary hover:text-primary">
                   {user?.picture && <img src={user.picture} alt="" className="w-5 h-5 rounded-full mr-1" />}
                   Мой профиль
                 </Button>

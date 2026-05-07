@@ -1,6 +1,5 @@
 import { createPortal } from "react-dom";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import {
 import type { RoadmapData, RoadmapStage } from "@/types";
 import { PROFESSION_LABELS, TIMELINE_LABELS, STATUS_LABELS, STAGE_COLORS, getResourceUrl } from "@/lib/constants";
 import { setToken, setUser, isAuthenticated, authHeaders } from "@/lib/auth";
+import { goToCabinet } from "@/lib/urls";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -231,7 +231,7 @@ const PrintLayout = ({ userData, formSnapshot, roadmapData, stages }: {
 export const RoadmapPreview = ({
   userData, roadmapData, isLoading, hideActions, formSnapshot,
 }: RoadmapPreviewProps) => {
-  const navigate = useNavigate();
+
   const [showResources, setShowResources] = useState<number | null>(null);
   const [savingRoadmap, setSavingRoadmap] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -276,7 +276,7 @@ export const RoadmapPreview = ({
           body: JSON.stringify({ roadmap: roadmapData }),
         });
       }
-      navigate("/profile");
+      goToCabinet();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Ошибка авторизации";
       setAuthError(msg);
