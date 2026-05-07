@@ -11,6 +11,7 @@ import type { RoadmapData, RoadmapStage } from "@/types";
 import { PROFESSION_LABELS, TIMELINE_LABELS, STATUS_LABELS, STAGE_COLORS, getResourceUrl } from "@/lib/constants";
 import { setToken, setUser, isAuthenticated, authHeaders } from "@/lib/auth";
 import { goToCabinet } from "@/lib/urls";
+import { generateRoadmapPDF } from "@/lib/pdf";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -236,12 +237,20 @@ export const RoadmapPreview = ({
   const [savingRoadmap, setSavingRoadmap] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const stages = roadmapData?.stages ?? FALLBACK_STAGES;
   const profession = PROFESSION_LABELS[userData.targetProfession] || userData.targetProfession || "цели";
   const timeline = TIMELINE_LABELS[userData.timeline] || roadmapData?.total_duration || "6 месяцев";
 
-  const handlePdf = () => window.print();
+  const handlePdf = async () => {
+    setPdfLoading(true);
+    try {
+      await generateRoadmapPDF(formSnapshot, roadmapData, stages, userData.fullName);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
 
   const handleShare = async () => {
     try {
@@ -415,8 +424,11 @@ export const RoadmapPreview = ({
         {/* Action buttons */}
         {!hideActions && !isLoading && (
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button variant="hero" size="lg" onClick={handlePdf}>
-              <Download className="w-4 h-4" /> Скачать план (PDF)
+            <Button variant="hero" size="lg" onClick={handlePdf} disabled={pdfLoading}>
+              {pdfLoading
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Генерируем PDF...</>
+                : <><Download className="w-4 h-4" /> Скачать план (PDF)</>
+              }
             </Button>
             <Button variant="outline" size="lg" onClick={handleShare}>
               <Share2 className="w-4 h-4" /> {shareMsg || "Поделиться"}
@@ -424,30 +436,40 @@ export const RoadmapPreview = ({
           </div>
         )}
 
-        {/* Register CTA — Google button inline, no extra dialog */}
-        {!hideActions && !isLoading && !isAuthenticated() && (
+        {/* CTA: always visible after roadmap */}
+        {!hideActions && !isLoading && (
           <div className="border border-primary/20 rounded-2xl p-6 bg-primary/5 text-center space-y-4">
-            <p className="font-medium text-foreground">Сохраните план и отслеживайте прогресс</p>
-            <p className="text-sm text-muted-foreground">Войдите через Google — займёт 10 секунд</p>
-            {savingRoadmap ? (
+            {isAuthenticated() ? (
+              // Уже залогинен — ведём в кабинет
+              <>
+                <p className="font-medium text-foreground">Ваш план готов!</p>
+                <p className="text-sm text-muted-foreground">Откройте личный кабинет чтобы отслеживать прогресс</p>
+                <Button variant="hero" size="lg" onClick={() => goToCabinet()}>
+                  <Sparkles className="w-4 h-4" /> Открыть мой кабинет
+                </Button>
+              </>
+            ) : savingRoadmap ? (
               <div className="flex items-center justify-center gap-2 text-muted-foreground py-2">
                 <Loader2 className="w-4 h-4 animate-spin text-primary" />
                 <span className="text-sm">Сохраняем план...</span>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-2">
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={() => setAuthError("Не удалось войти через Google. Попробуйте ещё раз.")}
-                  locale="ru"
-                  text="signin_with"
-                  shape="rectangular"
-                  size="large"
-                />
-                {authError && (
-                  <p className="text-sm text-destructive mt-1">{authError}</p>
-                )}
-              </div>
+              // Не залогинен — Google sign-in
+              <>
+                <p className="font-medium text-foreground">Сохраните план и отслеживайте прогресс</p>
+                <p className="text-sm text-muted-foreground">Войдите через Google — займёт 10 секунд</p>
+                <div className="flex flex-col items-center gap-2">
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => setAuthError("Не удалось войти через Google. Попробуйте ещё раз.")}
+                    locale="ru"
+                    text="signin_with"
+                    shape="rectangular"
+                    size="large"
+                  />
+                  {authError && <p className="text-sm text-destructive mt-1">{authError}</p>}
+                </div>
+              </>
             )}
           </div>
         )}
