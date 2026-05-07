@@ -310,45 +310,58 @@ def recalculate_roadmap(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Сохраняем новые данные формы
+    fd = payload.form_data
+
+    # Сохраняем данные формы как есть (camelCase от фронтенда)
     try:
-        user.form_data = payload.form_data
+        user.form_data = fd
         db.commit()
+        logger.info("form_data saved for user_id=%d", user_id)
     except SQLAlchemyError as exc:
         db.rollback()
         logger.error("DB error saving form_data: %s", exc)
         raise HTTPException(status_code=503, detail="Database error") from exc
 
-    # Генерируем новый роудмап (переиспользуем логику /api/roadmap)
-    try:
-        form = UserFormCreate(**payload.form_data)
-    except Exception as exc:
-        raise HTTPException(status_code=422, detail=f"Invalid form data: {exc}") from exc
+    # Извлекаем поля с поддержкой camelCase и snake_case
+    def _get(key_camel: str, key_snake: str, default=None):
+        return fd.get(key_camel) or fd.get(key_snake) or default
+
+    target_profession = _get("targetProfession", "target_profession")
+    target_industry   = _get("targetIndustry", "target_industry")
+    timeline          = _get("timeline", "timeline")
+    current_role      = _get("currentRole", "current_role")
+    hours_per_week    = _get("hoursPerWeek", "hours_per_week") or 10
+    budget            = _get("budget", "budget")
+    prefer_russian    = fd.get("preferRussian", fd.get("prefer_russian", True))
+    tech_skills       = fd.get("technicalSkills") or fd.get("technical_skills") or []
+    skills_str        = ", ".join(tech_skills) if tech_skills else "не указаны"
+    lang              = "на русском языке" if prefer_russian is not False else "in English"
+
+    logger.info(
+        "recalculate: user_id=%d profession=%s hours=%s",
+        user_id, target_profession, hours_per_week,
+    )
 
     groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not groq_api_key:
         raise HTTPException(status_code=503, detail="GROQ_API_KEY not set")
 
     client = GroqClient(api_key=groq_api_key)
-    lang = "на русском языке" if form.prefer_russian is not False else "in English"
-    skills = ", ".join(form.technical_skills) if form.technical_skills else "не указаны"
-    hours = form.hours_per_week or 10
-
     prompt = f"""Ты карьерный консультант. Составь персональный план развития {lang}.
 
 Профиль:
-- Цель: {form.target_profession or "не указана"}
-- Индустрия: {form.target_industry or "любая"}
-- Срок: {form.timeline or "не указан"}
-- Текущие навыки: {skills}
-- Текущая роль: {form.current_role or "не указана"}
-- Часов в неделю: {hours}
-- Бюджет: {form.budget or "не указан"}
+- Цель: {target_profession or "не указана"}
+- Индустрия: {target_industry or "любая"}
+- Срок: {timeline or "не указан"}
+- Текущие навыки: {skills_str}
+- Текущая роль: {current_role or "не указана"}
+- Часов в неделю: {hours_per_week}
+- Бюджет: {budget or "не указан"}
 
 Верни ТОЛЬКО валидный JSON без markdown:
 {{"stages":[{{"id":1,"title":"...","duration":"...","skills":["..."],"resources":["..."]}}],"total_duration":"...","summary":"..."}}
 
-Правила: 4-6 этапов, сроки под {hours} ч/нед, resources — реальные платформы, весь текст {lang}"""
+Правила: 4-6 этапов, сроки под {hours_per_week} ч/нед, resources — реальные платформы, весь текст {lang}"""
 
     try:
         completion = client.chat.completions.create(
@@ -358,22 +371,42 @@ def recalculate_roadmap(
             temperature=0.7,
         )
         roadmap = json.loads(completion.choices[0].message.content)
+        logger.info("Roadmap recalculated for user_id=%d stages=%d", user_id, len(roadmap.get("stages", [])))
     except Exception as exc:
-        logger.error("Groq error in recalculate: %s", exc)
+        logger.error("Groq error in recalculate: %s\n%s", exc, traceback.format_exc())
         raise HTTPException(status_code=502, detail=f"Groq API error: {exc}") from exc
 
-    # Сохраняем новый роудмап и сбрасываем прогресс
     try:
         user.roadmap = roadmap
         user.completed_stages = []
         db.commit()
-        logger.info("Roadmap recalculated for user_id=%d", user_id)
     except SQLAlchemyError as exc:
         db.rollback()
         logger.error("DB error saving recalculated roadmap: %s", exc)
         raise HTTPException(status_code=503, detail="Database error") from exc
 
     return roadmap
+
+
+@app.post("/api/me/save-form")
+def save_form_data(
+    payload: RecalculatePayload,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Сохраняет данные формы без пересчёта роудмапа (используется при первом логине)."""
+    user_id = _get_user_id(authorization, db)
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    try:
+        user.form_data = payload.form_data
+        db.commit()
+        logger.info("form_data saved (no recalc) for user_id=%d", user_id)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=503, detail="Database error") from exc
+    return {"ok": True}
 
 
 @app.post("/api/me/roadmap")

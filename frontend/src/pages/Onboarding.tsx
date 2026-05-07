@@ -287,23 +287,7 @@ const Onboarding = () => {
               }}
               roadmapData={roadmapData}
               isLoading={roadmapLoading}
-              formSnapshot={{
-                fullName: formData.fullName,
-                age: formData.age,
-                location: formData.location,
-                currentStatus: formData.currentStatus,
-                education: formData.education,
-                university: formData.university,
-                specialization: formData.specialization,
-                yearsExperience: formData.yearsExperience,
-                currentRole: formData.currentRole,
-                targetProfession: formData.targetProfession,
-                targetIndustry: formData.targetIndustry,
-                timeline: formData.timeline,
-                technicalSkills: formData.technicalSkills,
-                hoursPerWeek: formData.hoursPerWeek,
-                budget: formData.budget,
-              }}
+              formSnapshot={formData}
             />
             <div className="mt-10 text-center">
               <Button variant="ghost" onClick={handleBack}>

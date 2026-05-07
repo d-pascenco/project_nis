@@ -23,12 +23,23 @@ interface FormSnapshot {
   specialization?: string;
   yearsExperience?: string;
   currentRole?: string;
+  cvSummary?: string;
   targetProfession?: string;
   targetIndustry?: string;
   timeline?: string;
+  motivation?: string;
+  priorities?: string[];
   technicalSkills?: string[];
+  softSkills?: string[];
+  languages?: { name: string; level: number }[];
+  learningStyle?: string;
   hoursPerWeek?: number;
   budget?: string;
+  healthConsiderations?: string;
+  preferOnline?: boolean;
+  preferRussian?: boolean;
+  needMentorship?: boolean;
+  additionalInfo?: string;
 }
 
 interface RoadmapPreviewProps {
@@ -325,19 +336,21 @@ export const RoadmapPreview = ({
       if (!authRes.ok) throw new Error(body.detail || `Ошибка ${authRes.status}`);
       setToken(body.token);
       setUser(body.user);
-      // Сохраняем роудмап и данные формы одним запросом через recalculate
-      if (roadmapData && formSnapshot) {
-        await fetch("/api/me/recalculate", {
+      // Сохраняем данные формы
+      if (formSnapshot) {
+        await fetch("/api/me/save-form", {
           method: "POST",
           headers: authHeaders(),
           body: JSON.stringify({ form_data: formSnapshot }),
-        }).catch(() => {});
-      } else if (roadmapData) {
+        }).catch((e) => console.warn("save-form failed:", e));
+      }
+      // Сохраняем роудмап
+      if (roadmapData) {
         await fetch("/api/me/roadmap", {
           method: "POST",
           headers: authHeaders(),
           body: JSON.stringify({ roadmap: roadmapData }),
-        }).catch(() => {});
+        }).catch((e) => console.warn("save-roadmap failed:", e));
       }
       goToCabinet("/profile", body.token);
     } catch (err: unknown) {
