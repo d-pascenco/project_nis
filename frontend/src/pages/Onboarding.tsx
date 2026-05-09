@@ -9,6 +9,7 @@ import { SkillsStep } from "@/components/steps/SkillsStep";
 import { ConstraintsStep } from "@/components/steps/ConstraintsStep";
 import { ScheduleStep } from "@/components/steps/ScheduleStep";
 import { RoadmapPreview } from "@/components/RoadmapPreview";
+import { RoadmapGenerating } from "@/components/RoadmapGenerating";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { RoadmapData, OnboardingFormData } from "@/types";
@@ -61,6 +62,7 @@ const Onboarding = () => {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [roadmapData, setRoadmapData] = useState<RoadmapData | null>(null);
   const [roadmapLoading, setRoadmapLoading] = useState(false);
+  const [showGenerating, setShowGenerating] = useState(false);
 
   const updateFormData = (data: Partial<OnboardingFormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));
@@ -97,10 +99,9 @@ const Onboarding = () => {
   };
 
   const submitForm = async () => {
-    setIsSubmitting(true);
-    setRoadmapLoading(true);
-    setShowRoadmap(true);
     setIsSubmitting(false);
+    setRoadmapLoading(true);
+    setShowGenerating(true);  // показываем экран генерации
 
     // сохраняем форму в БД (не блокируем UI)
     fetch("/api/forms", {
@@ -143,6 +144,7 @@ const Onboarding = () => {
 
   const handleBack = () => {
     setValidationError(null);
+    if (showGenerating) return;  // не позволяем назад во время генерации
     if (showRoadmap) {
       setShowRoadmap(false);
     } else if (currentStep > 0) {
@@ -248,6 +250,23 @@ const Onboarding = () => {
         </div>
       </header>
 
+      {/* Экран генерации — полноэкранный overlay */}
+      {showGenerating && (
+        <RoadmapGenerating
+          targetProfession={
+            { frontend: "Frontend Developer", backend: "Backend Developer", fullstack: "Fullstack Developer",
+              "data-scientist": "Data Scientist", "ml-engineer": "ML Engineer", devops: "DevOps Engineer",
+              product: "Product Manager", designer: "UX/UI Designer", analyst: "Business Analyst", qa: "QA Engineer",
+            }[formData.targetProfession] || formData.targetProfession
+          }
+          isLoadingDone={!roadmapLoading}
+          onDoneShown={() => {
+            setShowGenerating(false);
+            setShowRoadmap(true);
+          }}
+        />
+      )}
+
       <main className="container mx-auto px-6 py-12 max-w-2xl">
         {!showRoadmap ? (
           <>
@@ -296,7 +315,7 @@ const Onboarding = () => {
                 timeline: formData.timeline,
               }}
               roadmapData={roadmapData}
-              isLoading={roadmapLoading}
+              isLoading={false}
               formSnapshot={formData}
             />
             <div className="mt-10 text-center">
