@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { RoadmapVisual } from "@/components/RoadmapVisual";
 import { Badge } from "@/components/ui/badge";
@@ -252,59 +252,23 @@ export const RoadmapPreview = ({
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [visualOpen, setVisualOpen] = useState(false);
-  const printRef = useRef<HTMLDivElement>(null);
 
   const stages = roadmapData?.stages ?? FALLBACK_STAGES;
   const profession = PROFESSION_LABELS[userData.targetProfession] || userData.targetProfession || "цели";
   const timeline = TIMELINE_LABELS[userData.timeline] || roadmapData?.total_duration || "6 месяцев";
 
   const handlePdf = async () => {
-    const el = printRef.current;
-    if (!el) return;
+    if (!roadmapData) return;
     setPdfLoading(true);
     try {
-      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-        import("html2canvas"),
-        import("jspdf"),
-      ]);
-
-      // Делаем элемент видимым для захвата
-      el.style.visibility = "visible";
-      el.style.left = "0";
-
-      const canvas = await html2canvas(el, {
-        scale: 1.8,
-        useCORS: false,
-        allowTaint: true,
-        backgroundColor: "#fdf8f4",
-        logging: false,
-        width: 800,
-        windowWidth: 800,
-        scrollX: 0,
-        scrollY: 0,
+      const { downloadRoadmapPDF } = await import("@/lib/generate-pdf");
+      await downloadRoadmapPDF({
+        roadmapData,
+        userName: userData.fullName,
+        targetProfession: userData.targetProfession,
+        currentRole: formSnapshot?.currentRole,
+        technicalSkills: formSnapshot?.technicalSkills,
       });
-
-      el.style.visibility = "hidden";
-      el.style.left = "-9999px";
-
-      const imgData = canvas.toDataURL("image/jpeg", 0.93);
-      const pdf = new jsPDF({ unit: "mm", format: "a4" });
-      const pageW = 210;
-      const pageH = 297;
-      const imgH = (canvas.height / canvas.width) * pageW;
-
-      let heightLeft = imgH;
-      let posY = 0;
-      pdf.addImage(imgData, "JPEG", 0, posY, pageW, imgH);
-      heightLeft -= pageH;
-      while (heightLeft > 0) {
-        posY -= pageH;
-        pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, posY, pageW, imgH);
-        heightLeft -= pageH;
-      }
-
-      pdf.save("nextpath-план.pdf");
     } catch (err) {
       console.error("[PDF]", err);
     } finally {
@@ -366,15 +330,6 @@ export const RoadmapPreview = ({
 
   return (
     <>
-      {/* Скрытый блок для html2canvas — position:absolute вне экрана */}
-      <PrintLayout
-        ref={printRef}
-        userData={userData}
-        formSnapshot={formSnapshot}
-        roadmapData={roadmapData}
-        stages={stages}
-      />
-
       <div className="space-y-10 animate-fade-in">
 
         {/* Header */}
