@@ -30,6 +30,7 @@ class UserForm(Base):
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(100), nullable=True)
     current_status: Mapped[str | None] = mapped_column(String(100), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
 

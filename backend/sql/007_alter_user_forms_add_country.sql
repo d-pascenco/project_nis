@@ -1,0 +1,2 @@
+ALTER TABLE user_forms
+  ADD COLUMN IF NOT EXISTS country VARCHAR(100);

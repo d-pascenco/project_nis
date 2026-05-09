@@ -2,6 +2,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormCard } from "@/components/FormCard";
+import { Autocomplete } from "@/components/Autocomplete";
+import { PROFESSIONS } from "@/lib/suggestions";
 import { Target, Clock, TrendingUp } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -41,27 +43,14 @@ export const GoalsStep = ({ data, onChange }: GoalsStepProps) => {
             <Target className="w-4 h-4 text-accent" />
             Желаемая профессия / роль <span className="text-destructive">*</span>
           </Label>
-          <Select
+          <Autocomplete
+            id="targetProfession"
             value={data.targetProfession}
-            onValueChange={(value) => onChange({ targetProfession: value })}
-          >
-            <SelectTrigger className="h-12">
-              <SelectValue placeholder="Выберите целевую профессию" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="frontend">Frontend Developer</SelectItem>
-              <SelectItem value="backend">Backend Developer</SelectItem>
-              <SelectItem value="fullstack">Fullstack Developer</SelectItem>
-              <SelectItem value="data-scientist">Data Scientist</SelectItem>
-              <SelectItem value="ml-engineer">ML Engineer</SelectItem>
-              <SelectItem value="devops">DevOps Engineer</SelectItem>
-              <SelectItem value="product">Product Manager</SelectItem>
-              <SelectItem value="designer">UX/UI Designer</SelectItem>
-              <SelectItem value="analyst">Business Analyst</SelectItem>
-              <SelectItem value="qa">QA Engineer</SelectItem>
-              <SelectItem value="other">Другое</SelectItem>
-            </SelectContent>
-          </Select>
+            onChange={(value) => onChange({ targetProfession: value })}
+            suggestions={PROFESSIONS}
+            placeholder="Data Scientist, Frontend Developer..."
+          />
+          <p className="text-xs text-muted-foreground">Введите на русском или английском — подберём нужное</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

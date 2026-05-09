@@ -120,6 +120,7 @@ export interface OnboardingFormData {
   preferRussian: boolean;
   needMentorship: boolean;
   additionalInfo: string;
+  country: string;
   scheduleItems: ScheduleItem[];
   // Skills: current vs desired
   targetHardSkills: string[];

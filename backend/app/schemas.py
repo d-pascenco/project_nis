@@ -23,6 +23,7 @@ class UserFormCreate(BaseModel):
     full_name: str | None = Field(default=None, max_length=255, validation_alias=AliasChoices("fullName", "full_name"))
     age: int | None = Field(default=None, ge=0, le=120)
     location: str | None = Field(default=None, max_length=255)
+    country: str | None = Field(default=None, max_length=100)
     current_status: str | None = Field(default=None, max_length=100, validation_alias=AliasChoices("currentStatus", "current_status"))
     email: str | None = Field(default=None, max_length=255)
 

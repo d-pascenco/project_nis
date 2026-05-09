@@ -52,6 +52,7 @@ const initialFormData: OnboardingFormData = {
   preferRussian: true,
   needMentorship: false,
   additionalInfo: "",
+  country: "",
   scheduleItems: [],
   privacyAccepted: false,
 };
@@ -77,6 +78,7 @@ const Onboarding = () => {
       case 0:
         if (!formData.fullName.trim()) return "Введите полное имя";
         if (!formData.age) return "Укажите возраст";
+        if (!formData.country.trim()) return "Укажите страну";
         if (!formData.location.trim()) return "Укажите город";
         if (!formData.currentStatus) return "Выберите текущий статус";
         return null;
@@ -167,6 +169,7 @@ const Onboarding = () => {
               age: formData.age,
               location: formData.location,
               currentStatus: formData.currentStatus,
+              country: formData.country || "",
             }}
             onChange={updateFormData}
           />
