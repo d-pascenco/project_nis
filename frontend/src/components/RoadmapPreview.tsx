@@ -250,30 +250,23 @@ export const RoadmapPreview = ({
   const [savingRoadmap, setSavingRoadmap] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
-  const [pdfLoading, setPdfLoading] = useState(false);
   const [visualOpen, setVisualOpen] = useState(false);
 
   const stages = roadmapData?.stages ?? FALLBACK_STAGES;
   const profession = PROFESSION_LABELS[userData.targetProfession] || userData.targetProfession || "цели";
   const timeline = TIMELINE_LABELS[userData.timeline] || roadmapData?.total_duration || "6 месяцев";
 
-  const handlePdf = async () => {
+  const handleDownload = () => {
     if (!roadmapData) return;
-    setPdfLoading(true);
-    try {
-      const { downloadRoadmapPDF } = await import("@/lib/generate-pdf");
-      await downloadRoadmapPDF({
+    import("@/lib/generate-html").then(({ downloadRoadmapHTML }) => {
+      downloadRoadmapHTML({
         roadmapData,
         userName: userData.fullName,
         targetProfession: userData.targetProfession,
         currentRole: formSnapshot?.currentRole,
         technicalSkills: formSnapshot?.technicalSkills,
       });
-    } catch (err) {
-      console.error("[PDF]", err);
-    } finally {
-      setPdfLoading(false);
-    }
+    });
   };
 
   const handleShare = async () => {
@@ -464,11 +457,8 @@ export const RoadmapPreview = ({
                 <GitBranch className="w-4 h-4" /> Карта развития
               </Button>
             )}
-            <Button variant="outline" size="lg" onClick={handlePdf} disabled={pdfLoading}>
-              {pdfLoading
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> PDF...</>
-                : <><Download className="w-4 h-4" /> Скачать PDF</>
-              }
+            <Button variant="outline" size="lg" onClick={handleDownload}>
+              <Download className="w-4 h-4" /> Скачать план
             </Button>
             <Button variant="outline" size="lg" onClick={handleShare}>
               <Share2 className="w-4 h-4" /> {shareMsg || "Поделиться"}

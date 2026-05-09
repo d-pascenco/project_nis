@@ -26,15 +26,16 @@ interface UserData extends AuthUser {
   completed_stages: number[];
 }
 
-const downloadProfilePDF = async (userData: UserData) => {
+const downloadProfileHTML = (userData: UserData) => {
   if (!userData.roadmap) return;
-  const { downloadRoadmapPDF } = await import("@/lib/generate-pdf");
-  await downloadRoadmapPDF({
-    roadmapData: userData.roadmap,
-    userName: userData.name || "",
-    targetProfession: userData.form_data?.targetProfession || "",
-    currentRole: userData.form_data?.currentRole,
-    technicalSkills: userData.form_data?.technicalSkills,
+  import("@/lib/generate-html").then(({ downloadRoadmapHTML }) => {
+    downloadRoadmapHTML({
+      roadmapData: userData.roadmap!,
+      userName: userData.name || "",
+      targetProfession: userData.form_data?.targetProfession || "",
+      currentRole: userData.form_data?.currentRole,
+      technicalSkills: userData.form_data?.technicalSkills,
+    });
   });
 };
 
@@ -56,7 +57,6 @@ const Profile = () => {
   const [savingName, setSavingName] = useState(false);
   const [editFormOpen, setEditFormOpen] = useState(false);
   const [visualOpen, setVisualOpen] = useState(false);
-  const [pdfLoading, setPdfLoading] = useState(false);
   const progressSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Load user ──────────────────────────────────────────────────────────────
@@ -163,11 +163,10 @@ const Profile = () => {
           <Button
             variant="outline"
             size="default"
-            disabled={pdfLoading}
-            onClick={async () => { setPdfLoading(true); try { await downloadProfilePDF(userData); } finally { setPdfLoading(false); } }}
+            onClick={() => downloadProfileHTML(userData)}
           >
             <Download className="w-4 h-4" />
-            {pdfLoading ? "Генерируем..." : "Скачать PDF"}
+            Скачать план
           </Button>
         </div>
       )}
