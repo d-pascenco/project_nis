@@ -81,8 +81,9 @@ export const EducationStep = ({ data, onChange }: EducationStepProps) => {
               value={data.university}
               onChange={(v) => onChange({ university: v })}
               suggestions={UNIVERSITIES}
-              placeholder="МГУ им. Ломоносова"
+              placeholder="МГУ, Stanford, MIT..."
             />
+            <p className="text-xs text-muted-foreground">Если учитесь / учились — укажите вуз</p>
           </div>
 
           {/* Специальность */}
@@ -95,7 +96,7 @@ export const EducationStep = ({ data, onChange }: EducationStepProps) => {
               value={data.specialization}
               onChange={(v) => onChange({ specialization: v })}
               suggestions={SPECIALIZATIONS}
-              placeholder="Программная инженерия"
+              placeholder="Программная инженерия..."
             />
           </div>
         </div>
@@ -125,17 +126,20 @@ export const EducationStep = ({ data, onChange }: EducationStepProps) => {
           {/* Текущая должность */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="currentRole">Текущая должность</Label>
-              <span className="text-xs text-muted-foreground">{data.currentRole.length}/{MAX_ROLE}</span>
+              <Label htmlFor="currentRole">Текущая должность <span className="text-xs text-muted-foreground font-normal">(необязательно)</span></Label>
+              {data.currentRole.length > 50 && (
+                <span className="text-xs text-muted-foreground">{data.currentRole.length}/{MAX_ROLE}</span>
+              )}
             </div>
             <Input
               id="currentRole"
-              placeholder="Junior Developer"
+              placeholder="Junior Developer, студент, фрилансер..."
               value={data.currentRole}
               onChange={handleRoleChange}
               onBlur={handleRoleBlur}
               className="h-12"
             />
+            <p className="text-xs text-muted-foreground">Если не работаете — можно написать «студент» или оставить пустым</p>
           </div>
         </div>
 
@@ -146,19 +150,35 @@ export const EducationStep = ({ data, onChange }: EducationStepProps) => {
               <FileText className="w-4 h-4 text-primary" />
               Краткое описание опыта (CV) <span className="text-destructive">*</span>
             </Label>
-            <span className={`text-xs ${data.cvSummary.trim().length >= 300 ? "text-muted-foreground" : "text-destructive"}`}>
+            <span className={`text-xs font-medium tabular-nums ${
+              data.cvSummary.trim().length >= 300
+                ? "text-green-600 dark:text-green-500"
+                : data.cvSummary.trim().length > 0
+                ? "text-amber-500"
+                : "text-muted-foreground"
+            }`}>
               {data.cvSummary.trim().length} / 300
             </span>
           </div>
           <Textarea
             id="cv"
-            placeholder="Опишите профессиональный опыт, ключевые достижения и навыки..."
+            placeholder="Опишите ваш профессиональный опыт, проекты, достижения и ключевые навыки. Можно скопировать резюме. Чем подробнее — тем точнее AI построит план именно для вас."
             value={data.cvSummary}
             onChange={(e) => onChange({ cvSummary: e.target.value })}
             onBlur={handleCvBlur}
-            className="min-h-[120px] resize-none"
+            className="min-h-[130px] resize-none"
           />
-          <p className="text-xs text-muted-foreground">Минимум 300 символов — чем подробнее, тем точнее ваш план</p>
+          {data.cvSummary.trim().length === 0 && (
+            <p className="text-xs text-muted-foreground">Минимум 300 символов. Можно вставить текст из резюме.</p>
+          )}
+          {data.cvSummary.trim().length > 0 && data.cvSummary.trim().length < 300 && (
+            <p className="text-xs text-amber-500">
+              Ещё {300 - data.cvSummary.trim().length} символов — AI сможет дать более точные рекомендации
+            </p>
+          )}
+          {data.cvSummary.trim().length >= 300 && (
+            <p className="text-xs text-green-600 dark:text-green-500">✓ Отлично! Достаточно для точного анализа</p>
+          )}
         </div>
 
       </div>

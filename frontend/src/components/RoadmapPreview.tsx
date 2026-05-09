@@ -259,16 +259,18 @@ export const RoadmapPreview = ({
 
   const handleDownload = () => {
     if (!roadmapData) return;
-    import("@/lib/generate-html").then(({ downloadRoadmapHTML }) => {
-      downloadRoadmapHTML({
-        roadmapData,
-        userName: userData.fullName,
-        targetProfession: userData.targetProfession,
-        currentRole: formSnapshot?.currentRole,
-        technicalSkills: formSnapshot?.technicalSkills,
-        scheduleItems: formSnapshot?.scheduleItems,
-      });
-    });
+    import("@/lib/generate-html")
+      .then(({ downloadRoadmapHTML }) => {
+        downloadRoadmapHTML({
+          roadmapData,
+          userName: userData.fullName || "",
+          targetProfession: userData.targetProfession || "",
+          currentRole: formSnapshot?.currentRole,
+          technicalSkills: formSnapshot?.technicalSkills,
+          scheduleItems: formSnapshot?.scheduleItems,
+        });
+      })
+      .catch((err) => console.error("[download] failed:", err));
   };
 
   const handleShare = async () => {
