@@ -1,15 +1,49 @@
+export interface RoadmapResource {
+  name: string;
+  platform: string;
+  type: "course" | "book" | "video" | "practice" | "tool" | "article";
+  time?: string;
+}
+
+export interface WeekPlan {
+  week: number;
+  focus: string;
+  tasks: string[];
+}
+
+export interface RoadmapProject {
+  title: string;
+  description: string;
+  duration?: string;
+}
+
+export interface FinalGoal {
+  title: string;
+  requirements: string[];
+  portfolio: string[];
+}
+
 export interface RoadmapStage {
   id: number;
   title: string;
   duration: string;
+  goal?: string;
   skills: string[];
-  resources: string[];
+  tools?: string[];
+  /** Ресурсы: строки (старый формат) или объекты (новый) */
+  resources: string[] | RoadmapResource[];
+  weekly_plan?: WeekPlan[];
+  projects?: RoadmapProject[];
+  deliverables?: string[];
+  checkpoint?: string;
+  job_relevance?: string;
 }
 
 export interface RoadmapData {
   stages: RoadmapStage[];
   total_duration: string;
   summary: string;
+  final_goal?: FinalGoal;
 }
 
 export interface OnboardingFormData {

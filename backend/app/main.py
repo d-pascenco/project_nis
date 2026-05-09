@@ -142,57 +142,117 @@ def create_user_form(form_data: UserFormCreate, db: Session = Depends(get_db)) -
 
 # ── Roadmap ───────────────────────────────────────────────────────────────────
 
-@app.post("/api/roadmap")
-def generate_roadmap(form_data: UserFormCreate) -> dict:
+def _build_roadmap_prompt(
+    target_profession: str,
+    target_industry: str,
+    timeline: str,
+    skills_str: str,
+    current_role: str,
+    hours: int,
+    budget: str,
+    lang: str,
+) -> str:
+    return f"""Ты опытный карьерный консультант. Составь подробный персональный план развития {lang}.
+
+Профиль пользователя:
+- Целевая профессия: {target_profession or "не указана"}
+- Индустрия: {target_industry or "любая"}
+- Желаемый срок: {timeline or "не указан"}
+- Текущие навыки: {skills_str}
+- Текущая роль: {current_role or "нет опыта"}
+- Часов в неделю: {hours}
+- Бюджет: {budget or "без ограничений"}
+
+Верни ТОЛЬКО валидный JSON объект строго по этой структуре:
+{{
+  "stages": [
+    {{
+      "id": 1,
+      "title": "Название этапа",
+      "duration": "X недель",
+      "goal": "Конкретная измеримая цель: что умеет делать после этапа",
+      "skills": ["навык1", "навык2", "навык3", "навык4", "навык5"],
+      "tools": ["инструмент1", "инструмент2", "инструмент3"],
+      "resources": [
+        {{"name": "Точное название курса или книги", "platform": "Stepik", "type": "course", "time": "20ч"}},
+        {{"name": "Название практики", "platform": "GitHub", "type": "practice", "time": "10ч"}},
+        {{"name": "Название видео/плейлиста", "platform": "YouTube", "type": "video", "time": "5ч"}},
+        {{"name": "Документация", "platform": "Официальный сайт", "type": "article", "time": "3ч"}}
+      ],
+      "weekly_plan": [
+        {{"week": 1, "focus": "Тема недели", "tasks": ["Конкретное задание 1", "Конкретное задание 2", "Конкретное задание 3", "Конкретное задание 4"]}},
+        {{"week": 2, "focus": "Тема", "tasks": ["задание", "задание", "задание", "задание"]}}
+      ],
+      "projects": [
+        {{"title": "Название проекта", "description": "Что именно создаём, какой функционал, почему важно для портфолио", "duration": "X дней"}}
+      ],
+      "deliverables": ["Конкретный артефакт 1 (репозиторий/сертификат/проект)", "Артефакт 2"],
+      "checkpoint": "Как точно проверить что этап пройден: что должен уметь/иметь",
+      "job_relevance": "Что этот этап даёт в резюме и на техническом собеседовании"
+    }}
+  ],
+  "total_duration": "X месяцев",
+  "summary": "2-3 предложения: путь от текущего уровня до цели",
+  "final_goal": {{
+    "title": "Целевая позиция (например: Junior Data Scientist)",
+    "requirements": [
+      "Требование работодателя 1",
+      "Требование 2",
+      "Требование 3",
+      "Требование 4",
+      "Требование 5"
+    ],
+    "portfolio": ["Проект 1 для портфолио", "Проект 2", "Проект 3"]
+  }}
+}}
+
+Строгие правила:
+- Ровно 5 этапов
+- weekly_plan: ровно столько объектов, сколько недель в duration (если 4 недели — 4 объекта)
+- resources: минимум 4 конкретных реальных ресурса на этап
+- projects: 1-2 практических проекта на каждый этап
+- Все задачи в weekly_plan конкретные и выполнимые за {hours} ч/нед
+- Сроки этапов реалистичны: учитывай {hours} ч/нед
+- Весь текст {lang}"""
+
+
+def _call_groq(prompt: str, profession: str) -> dict:
     groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not groq_api_key:
         raise HTTPException(status_code=503, detail="GROQ_API_KEY not set")
-
     try:
         client = GroqClient(api_key=groq_api_key)
-    except Exception as exc:
-        logger.error("Groq client init failed: %s", exc)
-        raise HTTPException(status_code=503, detail="Groq client init failed") from exc
-
-    lang = "на русском языке" if form_data.prefer_russian is not False else "in English"
-    skills = ", ".join(form_data.technical_skills) if form_data.technical_skills else "не указаны"
-    hours = form_data.hours_per_week or 10
-
-    prompt = f"""Ты карьерный консультант. Составь персональный план развития {lang}.
-
-Профиль:
-- Цель: {form_data.target_profession or "не указана"}
-- Индустрия: {form_data.target_industry or "любая"}
-- Срок: {form_data.timeline or "не указан"}
-- Текущие навыки: {skills}
-- Текущая роль: {form_data.current_role or "не указана"}
-- Часов в неделю: {hours}
-- Бюджет: {form_data.budget or "не указан"}
-
-Верни ТОЛЬКО валидный JSON без markdown:
-{{
-  "stages": [
-    {{"id": 1, "title": "...", "duration": "...", "skills": ["..."], "resources": ["..."]}}
-  ],
-  "total_duration": "...",
-  "summary": "..."
-}}
-
-Правила: 4-6 этапов, сроки под {hours} ч/нед, resources — реальные платформы (Stepik, Coursera, YouTube, GitHub, Хекслет), весь текст {lang}"""
-
-    try:
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
-            temperature=0.7,
+            temperature=0.6,
+            max_tokens=4096,
         )
         result = json.loads(completion.choices[0].message.content)
-        logger.info("Roadmap generated: profession=%s stages=%d", form_data.target_profession, len(result.get("stages", [])))
+        logger.info("Roadmap generated: profession=%s stages=%d", profession, len(result.get("stages", [])))
         return result
     except Exception as exc:
         logger.error("Groq API error: %s\n%s", exc, traceback.format_exc())
         raise HTTPException(status_code=502, detail=f"Groq API error: {exc}") from exc
+
+
+@app.post("/api/roadmap")
+def generate_roadmap(form_data: UserFormCreate) -> dict:
+    lang = "на русском языке" if form_data.prefer_russian is not False else "in English"
+    skills_str = ", ".join(form_data.technical_skills) if form_data.technical_skills else "не указаны"
+    hours = form_data.hours_per_week or 10
+    prompt = _build_roadmap_prompt(
+        form_data.target_profession or "",
+        form_data.target_industry or "",
+        form_data.timeline or "",
+        skills_str,
+        form_data.current_role or "",
+        hours,
+        form_data.budget or "",
+        lang,
+    )
+    return _call_groq(prompt, form_data.target_profession or "")
 
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
@@ -342,39 +402,18 @@ def recalculate_roadmap(
         user_id, target_profession, hours_per_week,
     )
 
-    groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
-    if not groq_api_key:
-        raise HTTPException(status_code=503, detail="GROQ_API_KEY not set")
-
-    client = GroqClient(api_key=groq_api_key)
-    prompt = f"""Ты карьерный консультант. Составь персональный план развития {lang}.
-
-Профиль:
-- Цель: {target_profession or "не указана"}
-- Индустрия: {target_industry or "любая"}
-- Срок: {timeline or "не указан"}
-- Текущие навыки: {skills_str}
-- Текущая роль: {current_role or "не указана"}
-- Часов в неделю: {hours_per_week}
-- Бюджет: {budget or "не указан"}
-
-Верни ТОЛЬКО валидный JSON без markdown:
-{{"stages":[{{"id":1,"title":"...","duration":"...","skills":["..."],"resources":["..."]}}],"total_duration":"...","summary":"..."}}
-
-Правила: 4-6 этапов, сроки под {hours_per_week} ч/нед, resources — реальные платформы, весь текст {lang}"""
-
-    try:
-        completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.7,
-        )
-        roadmap = json.loads(completion.choices[0].message.content)
-        logger.info("Roadmap recalculated for user_id=%d stages=%d", user_id, len(roadmap.get("stages", [])))
-    except Exception as exc:
-        logger.error("Groq error in recalculate: %s\n%s", exc, traceback.format_exc())
-        raise HTTPException(status_code=502, detail=f"Groq API error: {exc}") from exc
+    prompt = _build_roadmap_prompt(
+        target_profession or "",
+        target_industry or "",
+        timeline or "",
+        skills_str,
+        current_role or "",
+        hours_per_week,
+        budget or "",
+        lang,
+    )
+    roadmap = _call_groq(prompt, target_profession or "")
+    logger.info("Roadmap recalculated for user_id=%d stages=%d", user_id, len(roadmap.get("stages", [])))
 
     try:
         user.roadmap = roadmap

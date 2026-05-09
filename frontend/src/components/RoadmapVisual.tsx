@@ -1,15 +1,506 @@
 import { useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { RoadmapData, RoadmapStage } from "@/types";
+import type { RoadmapData, RoadmapStage, RoadmapResource } from "@/types";
 import { PROFESSION_LABELS, getResourceUrl } from "@/lib/constants";
 import {
-  X, ExternalLink, Clock, CheckCircle2, Circle,
-  Target, User, ChevronDown, ChevronUp, GitBranch,
+  X, ExternalLink, Clock, CheckCircle2, Target, User,
+  ChevronDown, ChevronUp, GitBranch, BookOpen, Wrench,
+  Calendar, FolderOpen, ListChecks, Briefcase, Award,
 } from "lucide-react";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const isResourceObj = (r: string | RoadmapResource): r is RoadmapResource =>
+  typeof r === "object" && r !== null;
+
+const resourceUrl = (r: string | RoadmapResource): string =>
+  isResourceObj(r) ? getResourceUrl(r.platform || r.name) : getResourceUrl(r);
+
+const resourceName = (r: string | RoadmapResource): string =>
+  isResourceObj(r) ? r.name : r;
+
+const resourceMeta = (r: string | RoadmapResource): string | null =>
+  isResourceObj(r) ? [r.platform, r.type !== "article" ? r.time : null].filter(Boolean).join(" · ") : null;
+
+const RESOURCE_TYPE_ICON: Record<string, string> = {
+  course: "📚", book: "📖", video: "🎬", practice: "⚙️", tool: "🛠", article: "📄",
+};
+
+// ── Color palette ─────────────────────────────────────────────────────────────
+
+const PALETTE = [
+  { border: "#c0623e", glow: "rgba(192,98,62,0.35)",  bg: "rgba(192,98,62,0.1)",  text: "#e8855a" },
+  { border: "#6384c7", glow: "rgba(99,132,199,0.35)",  bg: "rgba(99,132,199,0.1)",  text: "#8aaae8" },
+  { border: "#8263c7", glow: "rgba(130,99,199,0.35)", bg: "rgba(130,99,199,0.1)", text: "#a88ae8" },
+  { border: "#c7a328", glow: "rgba(199,163,40,0.35)",  bg: "rgba(199,163,40,0.1)",  text: "#dfc050" },
+  { border: "#3ea262", glow: "rgba(62,162,98,0.35)",   bg: "rgba(62,162,98,0.1)",   text: "#5abf80" },
+];
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+const SectionLabel = ({ icon: Icon, label, color }: { icon: React.ElementType; label: string; color: string }) => (
+  <div className="flex items-center gap-1.5 mb-2">
+    <Icon className="w-3.5 h-3.5" style={{ color }} />
+    <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: `${color}99` }}>
+      {label}
+    </span>
+  </div>
+);
+
+const Chip = ({ label, style }: { label: string; style?: React.CSSProperties }) => (
+  <span className="inline-flex items-center text-xs px-2.5 py-1 rounded-full" style={style}>
+    {label}
+  </span>
+);
+
+const Connector = ({ color, completed }: { color: string; completed?: boolean }) => (
+  <div className="flex flex-col items-center" style={{ height: 44 }}>
+    <div style={{
+      width: 2, flex: 1,
+      background: completed ? `linear-gradient(${color}, ${color}88)` : `${color}33`,
+      boxShadow: completed ? `0 0 6px ${color}` : "none",
+    }} />
+    <svg width="10" height="8" viewBox="0 0 10 8">
+      <path d="M5 8L0 0H10Z" fill={completed ? color : `${color}33`}
+        style={{ filter: completed ? `drop-shadow(0 0 3px ${color})` : "none" }} />
+    </svg>
+  </div>
+);
+
+// ── Stage node ────────────────────────────────────────────────────────────────
+
+const StageNode = ({
+  stage, palette, completed, isCurrent, isFirst,
+}: {
+  stage: RoadmapStage;
+  palette: typeof PALETTE[0];
+  completed: boolean;
+  isCurrent: boolean;
+  isFirst: boolean;
+}) => {
+  const [tab, setTab] = useState<"overview" | "weeks" | "practice" | "resources">("overview");
+  const [open, setOpen] = useState(isFirst || isCurrent);
+
+  const tabStyle = (t: string) => ({
+    fontSize: 11, padding: "3px 10px", borderRadius: 20, cursor: "pointer", fontWeight: 500,
+    background: tab === t ? palette.bg : "transparent",
+    color: tab === t ? palette.text : "rgba(255,255,255,0.35)",
+    border: `1px solid ${tab === t ? palette.border + "88" : "transparent"}`,
+    transition: "all 0.15s",
+  } as React.CSSProperties);
+
+  return (
+    <div
+      style={{
+        background: completed ? "rgba(255,255,255,0.03)" : palette.bg,
+        border: `1.5px solid ${completed ? palette.border + "33" : palette.border}`,
+        boxShadow: !completed ? `0 0 20px ${palette.glow}, inset 0 1px 0 rgba(255,255,255,0.05)` : "none",
+        borderRadius: 16, opacity: completed ? 0.65 : 1, transition: "all 0.3s",
+      }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center gap-3 p-4 cursor-pointer"
+        onClick={() => setOpen((p) => !p)}
+      >
+        <div style={{
+          width: 40, height: 40, borderRadius: "50%", border: `2px solid ${palette.border}`,
+          background: completed ? "rgba(255,255,255,0.06)" : palette.bg,
+          color: palette.text, display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 14, fontWeight: 700, flexShrink: 0,
+          boxShadow: !completed ? `0 0 12px ${palette.glow}` : "none",
+        }}>
+          {completed ? <CheckCircle2 size={18} /> : stage.id}
+        </div>
+
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 600, color: "#fff", fontSize: 14 }}>{stage.title}</span>
+            {isCurrent && !completed && (
+              <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20, fontWeight: 600,
+                background: palette.bg, color: palette.text, border: `1px solid ${palette.border}66` }}>
+                СЕЙЧАС
+              </span>
+            )}
+            {completed && (
+              <span style={{ fontSize: 10, padding: "2px 8px", borderRadius: 20,
+                background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)" }}>
+                Выполнено
+              </span>
+            )}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+            <Clock size={11} style={{ color: palette.text }} />
+            <span style={{ fontSize: 11, color: palette.text }}>{stage.duration}</span>
+          </div>
+        </div>
+
+        <div style={{ color: "rgba(255,255,255,0.3)", flexShrink: 0 }}>
+          {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </div>
+      </div>
+
+      {/* Expanded */}
+      {open && (
+        <div style={{ padding: "0 16px 16px" }} onClick={(e) => e.stopPropagation()}>
+          {/* Goal */}
+          {stage.goal && (
+            <div style={{
+              padding: "10px 14px", borderRadius: 10, marginBottom: 12,
+              background: `${palette.border}18`, border: `1px solid ${palette.border}44`,
+            }}>
+              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.75)", lineHeight: 1.5, margin: 0 }}>
+                🎯 {stage.goal}
+              </p>
+            </div>
+          )}
+
+          {/* Tabs */}
+          <div style={{ display: "flex", gap: 4, marginBottom: 14, flexWrap: "wrap" }}>
+            {[
+              { id: "overview", label: "Обзор" },
+              { id: "weeks", label: `По неделям${stage.weekly_plan ? ` (${stage.weekly_plan.length})` : ""}` },
+              { id: "practice", label: `Практика${stage.projects ? ` (${stage.projects.length})` : ""}` },
+              { id: "resources", label: `Ресурсы (${stage.resources.length})` },
+            ].map((t) => (
+              <button key={t.id} style={tabStyle(t.id)} onClick={() => setTab(t.id as typeof tab)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* === OVERVIEW === */}
+          {tab === "overview" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Skills */}
+              <div>
+                <SectionLabel icon={BookOpen} label="Навыки" color={palette.text} />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {stage.skills.map((s) => (
+                    <Chip key={s} label={s} style={{
+                      background: `${palette.border}20`, color: palette.text,
+                      border: `1px solid ${palette.border}44`,
+                    }} />
+                  ))}
+                </div>
+              </div>
+
+              {/* Tools */}
+              {stage.tools && stage.tools.length > 0 && (
+                <div>
+                  <SectionLabel icon={Wrench} label="Инструменты" color={palette.text} />
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {stage.tools.map((t) => (
+                      <Chip key={t} label={t} style={{
+                        background: "rgba(255,255,255,0.06)",
+                        color: "rgba(255,255,255,0.55)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                      }} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Job relevance */}
+              {stage.job_relevance && (
+                <div>
+                  <SectionLabel icon={Briefcase} label="Ценность для найма" color={palette.text} />
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, margin: 0 }}>
+                    {stage.job_relevance}
+                  </p>
+                </div>
+              )}
+
+              {/* Checkpoint */}
+              {stage.checkpoint && (
+                <div style={{
+                  padding: "10px 14px", borderRadius: 10,
+                  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+                }}>
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", margin: "0 0 4px", textTransform: "uppercase", letterSpacing: 1 }}>
+                    Критерий завершения
+                  </p>
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", margin: 0, lineHeight: 1.5 }}>
+                    ✓ {stage.checkpoint}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* === WEEKS === */}
+          {tab === "weeks" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {stage.weekly_plan && stage.weekly_plan.length > 0 ? (
+                stage.weekly_plan.map((w) => (
+                  <div key={w.week} style={{
+                    borderRadius: 10, overflow: "hidden",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                  }}>
+                    <div style={{
+                      padding: "8px 14px",
+                      background: `${palette.border}22`,
+                      display: "flex", alignItems: "center", gap: 8,
+                    }}>
+                      <Calendar size={12} style={{ color: palette.text }} />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: palette.text }}>
+                        Неделя {w.week}
+                      </span>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>— {w.focus}</span>
+                    </div>
+                    <div style={{ padding: "10px 14px", background: "rgba(0,0,0,0.2)" }}>
+                      {w.tasks.map((task, i) => (
+                        <div key={i} style={{
+                          display: "flex", gap: 10, padding: "4px 0",
+                          borderBottom: i < w.tasks.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                        }}>
+                          <span style={{ color: palette.text, fontSize: 12, flexShrink: 0, marginTop: 1 }}>
+                            {i + 1}.
+                          </span>
+                          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", lineHeight: 1.5 }}>
+                            {task}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "20px 0" }}>
+                  Недельный план не указан
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* === PRACTICE === */}
+          {tab === "practice" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {/* Projects */}
+              {stage.projects && stage.projects.length > 0 && (
+                <div>
+                  <SectionLabel icon={FolderOpen} label="Практические проекты" color={palette.text} />
+                  {stage.projects.map((p, i) => (
+                    <div key={i} style={{
+                      padding: "12px 14px", borderRadius: 10, marginBottom: 8,
+                      background: `${palette.border}18`, border: `1px solid ${palette.border}33`,
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>
+                          🗂 {p.title}
+                        </span>
+                        {p.duration && (
+                          <span style={{ fontSize: 11, color: palette.text }}>{p.duration}</span>
+                        )}
+                      </div>
+                      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", margin: 0, lineHeight: 1.5 }}>
+                        {p.description}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Deliverables */}
+              {stage.deliverables && stage.deliverables.length > 0 && (
+                <div>
+                  <SectionLabel icon={ListChecks} label="Что получите в итоге" color={palette.text} />
+                  {stage.deliverables.map((d, i) => (
+                    <div key={i} style={{
+                      display: "flex", gap: 10, padding: "6px 0",
+                      borderBottom: i < stage.deliverables!.length - 1
+                        ? "1px solid rgba(255,255,255,0.05)" : "none",
+                    }}>
+                      <span style={{ color: palette.text, fontSize: 13 }}>✓</span>
+                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", lineHeight: 1.5 }}>
+                        {d}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* === RESOURCES === */}
+          {tab === "resources" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {stage.resources.map((r, i) => {
+                const name = resourceName(r);
+                const url = resourceUrl(r);
+                const meta = resourceMeta(r);
+                const typeIcon = isResourceObj(r) ? (RESOURCE_TYPE_ICON[r.type] || "📌") : "🔗";
+                return (
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                    style={{
+                      display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 14px",
+                      borderRadius: 10, textDecoration: "none",
+                      background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+                      transition: "all 0.15s",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = `${palette.border}18`;
+                      (e.currentTarget as HTMLElement).style.borderColor = `${palette.border}55`;
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+                      (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.08)";
+                    }}
+                  >
+                    <span style={{ fontSize: 18, flexShrink: 0 }}>{typeIcon}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", fontWeight: 500,
+                        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {name}
+                      </div>
+                      {meta && (
+                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>
+                          {meta}
+                        </div>
+                      )}
+                    </div>
+                    <ExternalLink size={13} style={{ color: "rgba(255,255,255,0.25)", flexShrink: 0, marginTop: 2 }} />
+                  </a>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Goal node ─────────────────────────────────────────────────────────────────
+
+const GoalNode = ({ roadmapData, profession }: { roadmapData: RoadmapData; profession: string }) => {
+  const [open, setOpen] = useState(false);
+  const fg = roadmapData.final_goal;
+  return (
+    <div style={{
+      borderRadius: 16, marginBottom: 4,
+      background: "linear-gradient(135deg, rgba(192,98,62,0.22), rgba(192,98,62,0.06))",
+      border: "2px solid rgba(192,98,62,0.55)",
+      boxShadow: "0 0 40px rgba(192,98,62,0.18), 0 0 80px rgba(192,98,62,0.06), inset 0 1px 0 rgba(255,255,255,0.06)",
+    }}>
+      <div className="p-5">
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
+            background: "rgba(192,98,62,0.25)", border: "2px solid rgba(192,98,62,0.7)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <Target size={20} style={{ color: "#e8855a" }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 2, marginBottom: 4 }}>
+              Цель
+            </div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: "#fff", margin: "0 0 6px" }}>{profession}</h2>
+            {roadmapData.total_duration && (
+              <span style={{
+                fontSize: 12, padding: "3px 10px", borderRadius: 20,
+                background: "rgba(192,98,62,0.2)", border: "1px solid rgba(192,98,62,0.4)",
+                color: "#e8855a",
+              }}>
+                ⏱ {roadmapData.total_duration}
+              </span>
+            )}
+          </div>
+          {fg && (
+            <button onClick={() => setOpen((p) => !p)} style={{ color: "rgba(255,255,255,0.3)", flexShrink: 0 }}>
+              {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+          )}
+        </div>
+
+        {roadmapData.summary && (
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", margin: "12px 0 0", lineHeight: 1.6 }}>
+            {roadmapData.summary}
+          </p>
+        )}
+
+        {/* Final goal details */}
+        {open && fg && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid rgba(192,98,62,0.2)" }}>
+            {fg.requirements && fg.requirements.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8 }}>
+                  Требования работодателей
+                </div>
+                {fg.requirements.map((r, i) => (
+                  <div key={i} style={{ display: "flex", gap: 10, padding: "4px 0", borderBottom: i < fg.requirements.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                    <span style={{ color: "#e8855a", fontSize: 12 }}>▸</span>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>{r}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {fg.portfolio && fg.portfolio.length > 0 && (
+              <div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8 }}>
+                  Портфолио
+                </div>
+                {fg.portfolio.map((p, i) => (
+                  <div key={i} style={{ display: "flex", gap: 10, padding: "4px 0" }}>
+                    <span style={{ color: "#e8855a", fontSize: 12 }}>🗂</span>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>{p}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Start node ────────────────────────────────────────────────────────────────
+
+const StartNode = ({ userName, currentRole, skills }: {
+  userName: string; currentRole?: string; skills?: string[];
+}) => (
+  <div style={{
+    borderRadius: 16, padding: 20,
+    background: "rgba(255,255,255,0.03)", border: "1.5px solid rgba(255,255,255,0.1)",
+  }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: skills?.length ? 12 : 0 }}>
+      <div style={{
+        width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
+        background: "rgba(255,255,255,0.06)", border: "2px solid rgba(255,255,255,0.15)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <User size={18} style={{ color: "rgba(255,255,255,0.4)" }} />
+      </div>
+      <div>
+        <div style={{ fontWeight: 600, color: "rgba(255,255,255,0.75)", fontSize: 14 }}>
+          {userName || "Вы сейчас"}
+        </div>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>
+          {currentRole || "Текущий уровень"}
+        </div>
+      </div>
+    </div>
+    {skills && skills.length > 0 && (
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {skills.slice(0, 6).map((s) => (
+          <span key={s} style={{
+            fontSize: 11, padding: "2px 8px", borderRadius: 20,
+            background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.35)",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}>{s}</span>
+        ))}
+        {skills.length > 6 && (
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>+{skills.length - 6}</span>
+        )}
+      </div>
+    )}
+  </div>
+);
+
+// ── Main dialog ───────────────────────────────────────────────────────────────
 
 interface RoadmapVisualProps {
   roadmapData: RoadmapData;
@@ -22,332 +513,89 @@ interface RoadmapVisualProps {
   onClose: () => void;
 }
 
-// ── Stage colors ──────────────────────────────────────────────────────────────
-
-const STAGE_PALETTE = [
-  { bg: "rgba(192,98,62,0.15)",  border: "#c0623e", glow: "rgba(192,98,62,0.4)",  text: "#e8855a" },
-  { bg: "rgba(99,132,199,0.15)", border: "#6384c7", glow: "rgba(99,132,199,0.4)", text: "#7fa0e0" },
-  { bg: "rgba(130,99,199,0.15)", border: "#8263c7", glow: "rgba(130,99,199,0.4)", text: "#a07fe0" },
-  { bg: "rgba(199,163,40,0.15)", border: "#c7a328", glow: "rgba(199,163,40,0.4)", text: "#dfc050" },
-  { bg: "rgba(62,162,98,0.15)",  border: "#3ea262", glow: "rgba(62,162,98,0.4)",  text: "#5abf80" },
-  { bg: "rgba(199,80,100,0.15)", border: "#c75064", glow: "rgba(199,80,100,0.4)", text: "#e07a90" },
-];
-
-// ── Connector line with arrow ─────────────────────────────────────────────────
-
-const Connector = ({ color, completed }: { color: string; completed?: boolean }) => (
-  <div className="flex flex-col items-center py-1" style={{ minHeight: 48 }}>
-    <div
-      style={{
-        width: 2,
-        flex: 1,
-        background: completed
-          ? `linear-gradient(to bottom, ${color}, ${color}88)`
-          : `linear-gradient(to bottom, ${color}66, ${color}22)`,
-        boxShadow: completed ? `0 0 8px ${color}` : "none",
-        transition: "all 0.5s",
-      }}
-    />
-    <svg width="12" height="10" viewBox="0 0 12 10">
-      <path
-        d="M6 10 L0 0 L12 0 Z"
-        fill={completed ? color : `${color}44`}
-        style={{ filter: completed ? `drop-shadow(0 0 4px ${color})` : "none" }}
-      />
-    </svg>
-  </div>
-);
-
-// ── Stage node ────────────────────────────────────────────────────────────────
-
-const StageNode = ({
-  stage, palette, completed, isFirst,
-}: {
-  stage: RoadmapStage;
-  palette: (typeof STAGE_PALETTE)[0];
-  completed: boolean;
-  isFirst: boolean;
-}) => {
-  const [expanded, setExpanded] = useState(isFirst);
-
-  return (
-    <div
-      className="rounded-2xl transition-all duration-300 cursor-pointer"
-      style={{
-        background: completed ? "rgba(255,255,255,0.04)" : palette.bg,
-        border: `1.5px solid ${completed ? palette.border + "44" : palette.border}`,
-        boxShadow: completed ? "none" : `0 0 20px ${palette.glow}, inset 0 1px 0 rgba(255,255,255,0.06)`,
-        opacity: completed ? 0.7 : 1,
-      }}
-      onClick={() => setExpanded((p) => !p)}
-    >
-      {/* Header */}
-      <div className="flex items-center gap-3 p-4">
-        <div
-          className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-          style={{
-            background: completed ? "rgba(255,255,255,0.1)" : palette.bg,
-            border: `2px solid ${palette.border}`,
-            color: palette.text,
-            boxShadow: completed ? "none" : `0 0 12px ${palette.glow}`,
-          }}
-        >
-          {completed ? <CheckCircle2 className="w-5 h-5" /> : stage.id}
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-semibold text-white text-sm">{stage.title}</h3>
-            {completed && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-white/60">
-                Выполнено
-              </span>
-            )}
-            {isFirst && !completed && (
-              <span
-                className="text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ background: palette.bg, color: palette.text, border: `1px solid ${palette.border}` }}
-              >
-                Сейчас
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <Clock className="w-3 h-3" style={{ color: palette.text }} />
-            <span className="text-xs" style={{ color: palette.text }}>{stage.duration}</span>
-          </div>
-        </div>
-
-        <button
-          className="shrink-0 p-1 rounded-lg transition-colors"
-          style={{ color: palette.text }}
-          onClick={(e) => { e.stopPropagation(); setExpanded((p) => !p); }}
-        >
-          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
-      </div>
-
-      {/* Expanded content */}
-      {expanded && (
-        <div className="px-4 pb-4 space-y-3" onClick={(e) => e.stopPropagation()}>
-          <div className="w-full h-px" style={{ background: `${palette.border}33` }} />
-
-          {/* Skills */}
-          <div>
-            <p className="text-xs mb-2" style={{ color: `${palette.text}99` }}>НАВЫКИ:</p>
-            <div className="flex flex-wrap gap-1.5">
-              {stage.skills.map((s) => (
-                <span
-                  key={s}
-                  className="text-xs px-2.5 py-1 rounded-full"
-                  style={{ background: `${palette.border}22`, color: palette.text, border: `1px solid ${palette.border}44` }}
-                >
-                  {s}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Resources */}
-          <div>
-            <p className="text-xs mb-2" style={{ color: `${palette.text}99` }}>РЕСУРСЫ:</p>
-            <div className="flex flex-wrap gap-2">
-              {stage.resources.map((r) => (
-                <a
-                  key={r}
-                  href={getResourceUrl(r)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all hover:scale-105"
-                  style={{
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    color: "rgba(255,255,255,0.8)",
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {r} <ExternalLink className="w-3 h-3 opacity-60" />
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// ── Start node ────────────────────────────────────────────────────────────────
-
-const StartNode = ({ userName, currentRole, skills }: {
-  userName: string; currentRole?: string; skills?: string[];
-}) => (
-  <div
-    className="rounded-2xl p-5"
-    style={{
-      background: "rgba(255,255,255,0.04)",
-      border: "1.5px solid rgba(255,255,255,0.12)",
-    }}
-  >
-    <div className="flex items-center gap-3 mb-3">
-      <div
-        className="w-10 h-10 rounded-full flex items-center justify-center"
-        style={{ background: "rgba(255,255,255,0.08)", border: "2px solid rgba(255,255,255,0.2)" }}
-      >
-        <User className="w-5 h-5 text-white/60" />
-      </div>
-      <div>
-        <p className="font-semibold text-white text-sm">{userName || "Вы сейчас"}</p>
-        <p className="text-xs text-white/40">{currentRole || "Текущий уровень"}</p>
-      </div>
-    </div>
-    {skills && skills.length > 0 && (
-      <div className="flex flex-wrap gap-1.5">
-        {skills.slice(0, 5).map((s) => (
-          <span key={s} className="text-xs px-2 py-0.5 rounded-full bg-white/6 text-white/40 border border-white/10">
-            {s}
-          </span>
-        ))}
-        {skills.length > 5 && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-white/6 text-white/40">
-            +{skills.length - 5}
-          </span>
-        )}
-      </div>
-    )}
-  </div>
-);
-
-// ── Goal node ─────────────────────────────────────────────────────────────────
-
-const GoalNode = ({ profession, summary, totalDuration }: {
-  profession: string; summary?: string; totalDuration?: string;
-}) => (
-  <div
-    className="rounded-2xl p-5 mb-2 text-center"
-    style={{
-      background: "linear-gradient(135deg, rgba(192,98,62,0.25), rgba(192,98,62,0.08))",
-      border: "2px solid rgba(192,98,62,0.6)",
-      boxShadow: "0 0 40px rgba(192,98,62,0.2), 0 0 80px rgba(192,98,62,0.08), inset 0 1px 0 rgba(255,255,255,0.08)",
-    }}
-  >
-    <div className="flex items-center justify-center gap-2 mb-2">
-      <div
-        className="w-10 h-10 rounded-full flex items-center justify-center"
-        style={{ background: "rgba(192,98,62,0.3)", border: "2px solid rgba(192,98,62,0.8)" }}
-      >
-        <Target className="w-5 h-5" style={{ color: "#e8855a" }} />
-      </div>
-      <div className="text-left">
-        <p className="text-xs text-white/40 uppercase tracking-widest mb-0.5">Цель</p>
-        <h2 className="text-lg font-bold text-white leading-tight">{profession}</h2>
-      </div>
-    </div>
-    {totalDuration && (
-      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full mt-1"
-        style={{ background: "rgba(192,98,62,0.2)", border: "1px solid rgba(192,98,62,0.4)" }}>
-        <Clock className="w-3.5 h-3.5" style={{ color: "#e8855a" }} />
-        <span className="text-xs font-medium" style={{ color: "#e8855a" }}>{totalDuration}</span>
-      </div>
-    )}
-    {summary && (
-      <p className="text-xs text-white/40 mt-3 leading-relaxed max-w-md mx-auto">{summary}</p>
-    )}
-  </div>
-);
-
-// ── Main dialog component ─────────────────────────────────────────────────────
-
 export const RoadmapVisual = ({
-  roadmapData, userName, targetProfession, currentRole, technicalSkills,
-  completedStages = [], open, onClose,
+  roadmapData, userName, targetProfession, currentRole,
+  technicalSkills, completedStages = [], open, onClose,
 }: RoadmapVisualProps) => {
   const profession = PROFESSION_LABELS[targetProfession] || targetProfession || "Цель";
-  const stages = [...roadmapData.stages]; // top-down: stage 1 first
-
+  const stages = [...roadmapData.stages];
   const firstIncomplete = stages.findIndex((s) => !completedStages.includes(s.id));
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-none w-screen h-screen p-0 border-0 bg-transparent overflow-hidden">
-        {/* Dark overlay */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: "radial-gradient(ellipse at 50% 30%, #2d120800 0%, #0d0704 60%, #000000 100%)",
-            backgroundColor: "#0d0704",
-          }}
-        />
+        {/* Background */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "radial-gradient(ellipse at 50% 20%, rgba(40,15,5,1) 0%, rgba(8,4,2,1) 70%)",
+        }} />
+        <div style={{
+          position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
+          width: 600, height: 400, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(192,98,62,0.1) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }} />
 
-        {/* Ambient glow */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full"
-            style={{ background: "radial-gradient(circle, rgba(192,98,62,0.12) 0%, transparent 70%)" }} />
-          <div className="absolute bottom-0 left-1/4 w-64 h-64 rounded-full"
-            style={{ background: "radial-gradient(circle, rgba(99,132,199,0.08) 0%, transparent 70%)" }} />
-        </div>
-
-        {/* Close button */}
+        {/* Close */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-50 p-2 rounded-xl transition-all hover:bg-white/10"
-          style={{ color: "rgba(255,255,255,0.5)" }}
+          style={{
+            position: "absolute", top: 16, right: 16, zIndex: 50,
+            padding: 8, borderRadius: 10, background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.4)",
+            cursor: "pointer", transition: "all 0.15s",
+          }}
         >
-          <X className="w-5 h-5" />
+          <X size={18} />
         </button>
 
-        {/* Header */}
-        <div className="absolute top-0 left-0 right-0 z-40 flex items-center justify-center py-4 px-16"
-          style={{ background: "linear-gradient(to bottom, rgba(13,7,4,0.9), transparent)" }}>
-          <div className="flex items-center gap-2">
-            <GitBranch className="w-4 h-4" style={{ color: "#c0623e" }} />
-            <span className="text-white/50 text-sm font-medium">Дорожная карта развития</span>
+        {/* Header bar */}
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0, zIndex: 40,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "12px 60px",
+          background: "linear-gradient(to bottom, rgba(8,4,2,0.95), transparent)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <GitBranch size={14} style={{ color: "#c0623e" }} />
+            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", fontWeight: 500 }}>
+              Дорожная карта развития
+            </span>
+            <span style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
+            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.25)" }}>{profession}</span>
           </div>
         </div>
 
         {/* Scrollable content */}
-        <div className="absolute inset-0 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
-          <div className="min-h-full flex flex-col items-center pt-16 pb-24 px-4">
-            <div className="w-full max-w-lg">
+        <div style={{ position: "absolute", inset: 0, overflowY: "auto", paddingTop: 56, paddingBottom: 60 }}>
+          <div style={{ maxWidth: 600, margin: "0 auto", padding: "16px 16px" }}>
 
-              {/* GOAL */}
-              <GoalNode
-                profession={profession}
-                summary={roadmapData.summary}
-                totalDuration={roadmapData.total_duration}
-              />
+            <GoalNode roadmapData={roadmapData} profession={profession} />
 
-              {/* Stages top-down */}
-              {stages.map((stage, idx) => {
-                const palette = STAGE_PALETTE[idx % STAGE_PALETTE.length];
-                const done = completedStages.includes(stage.id);
-                const isFirst = idx === firstIncomplete;
-                return (
-                  <div key={stage.id}>
-                    <Connector color={palette.border} completed={done} />
-                    <StageNode
-                      stage={stage}
-                      palette={palette}
-                      completed={done}
-                      isFirst={isFirst}
-                    />
-                  </div>
-                );
-              })}
+            {stages.map((stage, idx) => {
+              const palette = PALETTE[idx % PALETTE.length];
+              const done = completedStages.includes(stage.id);
+              const isCurrent = idx === firstIncomplete;
+              return (
+                <div key={stage.id}>
+                  <Connector color={palette.border} completed={done} />
+                  <StageNode
+                    stage={stage}
+                    palette={palette}
+                    completed={done}
+                    isCurrent={isCurrent}
+                    isFirst={idx === 0}
+                  />
+                </div>
+              );
+            })}
 
-              {/* START */}
-              <Connector color="rgba(255,255,255,0.15)" />
-              <StartNode
-                userName={userName}
-                currentRole={currentRole}
-                skills={technicalSkills}
-              />
+            <Connector color="rgba(255,255,255,0.12)" />
+            <StartNode userName={userName} currentRole={currentRole} skills={technicalSkills} />
 
-              {/* Bottom hint */}
-              <p className="text-center text-xs mt-8" style={{ color: "rgba(255,255,255,0.2)" }}>
-                Нажмите на этап чтобы раскрыть навыки и ресурсы
-              </p>
-            </div>
+            <p style={{ textAlign: "center", fontSize: 11, color: "rgba(255,255,255,0.15)", marginTop: 24 }}>
+              Нажмите на этап чтобы открыть детальный план · Переключайте вкладки внутри
+            </p>
           </div>
         </div>
       </DialogContent>
