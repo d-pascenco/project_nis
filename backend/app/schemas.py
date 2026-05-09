@@ -55,6 +55,7 @@ class UserFormCreate(BaseModel):
     prefer_russian: bool | None = Field(default=None, validation_alias=AliasChoices("preferRussian", "prefer_russian"))
     need_mentorship: bool | None = Field(default=None, validation_alias=AliasChoices("needMentorship", "need_mentorship"))
     additional_info: str | None = Field(default=None, validation_alias=AliasChoices("additionalInfo", "additional_info"))
+    schedule_items: list[dict] = Field(default_factory=list, validation_alias=AliasChoices("scheduleItems", "schedule_items"))
 
     @field_validator("age", "years_experience", "hours_per_week", mode="before")
     @classmethod

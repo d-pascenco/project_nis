@@ -63,5 +63,6 @@ class UserForm(Base):
     prefer_russian: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     need_mentorship: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     additional_info: Mapped[str | None] = mapped_column(Text, nullable=True)
+    schedule_items: Mapped[list[dict]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

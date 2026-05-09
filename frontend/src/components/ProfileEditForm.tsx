@@ -5,6 +5,7 @@ import { EducationStep } from "@/components/steps/EducationStep";
 import { GoalsStep } from "@/components/steps/GoalsStep";
 import { SkillsStep } from "@/components/steps/SkillsStep";
 import { ConstraintsStep } from "@/components/steps/ConstraintsStep";
+import { ScheduleStep } from "@/components/steps/ScheduleStep";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { authHeaders } from "@/lib/auth";
 import type { OnboardingFormData, RoadmapData } from "@/types";
@@ -31,7 +32,7 @@ const DEFAULT: OnboardingFormData = {
   needMentorship: false, additionalInfo: "",
 };
 
-const SECTIONS = ["О вас", "Образование", "Цели", "Навыки", "Ограничения"];
+const SECTIONS = ["О вас", "Образование", "Цели", "Навыки", "Ограничения", "Расписание"];
 
 export const ProfileEditForm = ({ open, onClose, initialData, onRoadmapUpdated, onFormSaved }: ProfileEditFormProps) => {
   const [formData, setFormData] = useState<OnboardingFormData>({ ...DEFAULT, ...initialData });
@@ -126,6 +127,12 @@ export const ProfileEditForm = ({ open, onClose, initialData, onRoadmapUpdated, 
       case 4: return (
         <ConstraintsStep
           data={{ hoursPerWeek: formData.hoursPerWeek, budget: formData.budget, healthConsiderations: formData.healthConsiderations, preferOnline: formData.preferOnline, preferRussian: formData.preferRussian, needMentorship: formData.needMentorship, additionalInfo: formData.additionalInfo }}
+          onChange={update}
+        />
+      );
+      case 5: return (
+        <ScheduleStep
+          data={{ scheduleItems: formData.scheduleItems || [] }}
           onChange={update}
         />
       );

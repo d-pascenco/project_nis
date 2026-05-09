@@ -154,6 +154,23 @@ def _hours_to_schedule(hours: int) -> str:
     return f"{hours}ч/нед — 3-4ч в будни (2 сессии), 6ч в выходные"
 
 
+def _format_schedule(schedule_items: list) -> str:
+    """Форматирует расписание пользователя для промпта."""
+    if not schedule_items:
+        return ""
+    lines = []
+    for item in schedule_items:
+        activity = item.get("activity") or item.get("name") or "Занятость"
+        from_t = item.get("from", "")
+        to_t = item.get("to", "")
+        days = item.get("days", "")
+        if from_t and to_t:
+            lines.append(f"  - {activity}: {from_t}–{to_t}, {days}")
+        else:
+            lines.append(f"  - {activity}: {days}")
+    return "\n".join(lines)
+
+
 def _build_roadmap_prompt(
     target_profession: str,
     target_industry: str,
@@ -163,8 +180,20 @@ def _build_roadmap_prompt(
     hours: int,
     budget: str,
     lang: str,
+    schedule_items: list | None = None,
 ) -> str:
     schedule_hint = _hours_to_schedule(hours)
+    schedule_section = ""
+    if schedule_items:
+        formatted = _format_schedule(schedule_items)
+        schedule_section = f"""
+Текущее расписание занятости пользователя (ОБЯЗАТЕЛЬНО УЧЕСТЬ):
+{formatted}
+
+КРИТИЧНО: Составляй учебные блоки ТОЛЬКО в свободные от указанных дел временные окна.
+Проанализируй занятое время и определи реальные свободные часы.
+Если утро занято работой — ставь занятия вечером. Если есть только выходные — адаптируй план под выходные.
+"""
     return f"""Ты персональный карьерный коуч и лайф-менеджер. Твоя задача — составить ПОЛНЫЙ жизненный план {lang}.
 Клиент не должен ничего придумывать сам. Ты предусматриваешь всё: обучение, расписание дня, быт, сон, питание, тренировки, мотивацию, тайм-менеджмент.
 
@@ -176,6 +205,7 @@ def _build_roadmap_prompt(
 - Текущая роль: {current_role or "нет опыта"}
 - Доступных часов: {hours}ч/нед ({schedule_hint})
 - Бюджет: {budget or "без ограничений"}
+{schedule_section}
 
 Верни ТОЛЬКО валидный JSON без markdown:
 {{
@@ -302,6 +332,7 @@ def generate_roadmap(form_data: UserFormCreate) -> dict:
         hours,
         form_data.budget or "",
         lang,
+        form_data.schedule_items or [],
     )
     return _call_groq(prompt, form_data.target_profession or "")
 
@@ -453,6 +484,7 @@ def recalculate_roadmap(
         user_id, target_profession, hours_per_week,
     )
 
+    schedule_items = fd.get("scheduleItems") or fd.get("schedule_items") or []
     prompt = _build_roadmap_prompt(
         target_profession or "",
         target_industry or "",
@@ -462,6 +494,7 @@ def recalculate_roadmap(
         hours_per_week,
         budget or "",
         lang,
+        schedule_items,
     )
     roadmap = _call_groq(prompt, target_profession or "")
     logger.info("Roadmap recalculated for user_id=%d stages=%d", user_id, len(roadmap.get("stages", [])))

@@ -7,6 +7,7 @@ import { EducationStep } from "@/components/steps/EducationStep";
 import { GoalsStep } from "@/components/steps/GoalsStep";
 import { SkillsStep } from "@/components/steps/SkillsStep";
 import { ConstraintsStep } from "@/components/steps/ConstraintsStep";
+import { ScheduleStep } from "@/components/steps/ScheduleStep";
 import { RoadmapPreview } from "@/components/RoadmapPreview";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -18,6 +19,7 @@ const steps = [
   "Цели",
   "Навыки",
   "Ограничения",
+  "Расписание",
 ];
 
 const initialFormData: OnboardingFormData = {
@@ -47,6 +49,7 @@ const initialFormData: OnboardingFormData = {
   preferRussian: true,
   needMentorship: false,
   additionalInfo: "",
+  scheduleItems: [],
 };
 
 const Onboarding = () => {
@@ -214,6 +217,13 @@ const Onboarding = () => {
               needMentorship: formData.needMentorship,
               additionalInfo: formData.additionalInfo,
             }}
+            onChange={updateFormData}
+          />
+        );
+      case 5:
+        return (
+          <ScheduleStep
+            data={{ scheduleItems: formData.scheduleItems }}
             onChange={updateFormData}
           />
         );

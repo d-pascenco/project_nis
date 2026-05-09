@@ -49,6 +49,14 @@ export interface LifestyleGuide {
   deep_work: string;
 }
 
+export interface ScheduleItem {
+  id: string;
+  activity: string;
+  from: string;   // "09:00"
+  to: string;     // "18:00"
+  days: string;   // "Пн-Пт" | "Ежедневно" | ...
+}
+
 export interface LifeSystem {
   time_management: string;
   daily_ritual: string;
@@ -112,4 +120,5 @@ export interface OnboardingFormData {
   preferRussian: boolean;
   needMentorship: boolean;
   additionalInfo: string;
+  scheduleItems: ScheduleItem[];
 }
