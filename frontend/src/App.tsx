@@ -143,6 +143,7 @@ const CabinetRoutes = () => (
   <Routes>
     <Route path="/" element={<Navigate to="/profile" replace />} />
     <Route path="/profile" element={<CabinetGuard><Profile /></CabinetGuard>} />
+    <Route path="/shared/:id" element={<Shared />} />
     <Route path="*" element={<Navigate to="/profile" replace />} />
   </Routes>
 );

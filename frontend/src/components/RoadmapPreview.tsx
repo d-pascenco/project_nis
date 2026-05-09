@@ -252,45 +252,84 @@ export const RoadmapPreview = ({
   const [authError, setAuthError] = useState<string | null>(null);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [visualOpen, setVisualOpen] = useState(false);
-  const [pdfLoading, setPdfLoading] = useState(false);
 
   const stages = roadmapData?.stages ?? FALLBACK_STAGES;
   const profession = PROFESSION_LABELS[userData.targetProfession] || userData.targetProfession || "цели";
   const timeline = TIMELINE_LABELS[userData.timeline] || roadmapData?.total_duration || "6 месяцев";
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     if (!roadmapData) return;
-    setPdfLoading(true);
     try {
-      const { generateRoadmapHTML } = await import("@/lib/generate-html");
-      let html: string;
-      try {
-        html = generateRoadmapHTML({
-          roadmapData,
-          userName: userData.fullName || "",
-          targetProfession: userData.targetProfession || "",
-          currentRole: formSnapshot?.currentRole,
-          technicalSkills: formSnapshot?.technicalSkills,
-          scheduleItems: formSnapshot?.scheduleItems,
-        });
-      } catch (genErr) {
-        console.error("[download] HTML generation error:", genErr);
-        // Fallback: minimal HTML
-        html = `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>NextPath Plan</title></head><body><pre>${JSON.stringify(roadmapData, null, 2)}</pre></body></html>`;
-      }
+      const stagesHtml = (roadmapData.stages || []).map((s, i) => {
+        const resources = (s.resources || [])
+          .map((r) => (typeof r === "string" ? r : (r as { name: string }).name))
+          .join(", ");
+        const weekly = (s.weekly_plan || [])
+          .map((w) => `<div style="margin:6px 0"><b>Неделя ${w.week} — ${w.focus}:</b><ul style="margin:4px 0 0;padding-left:20px">${(w.tasks || []).map((t) => `<li>${t}</li>`).join("")}</ul></div>`)
+          .join("");
+        const projects = (s.projects || [])
+          .map((p) => `<div style="margin:4px 0">• <b>${p.title}</b>${p.duration ? ` (${p.duration})` : ""} — ${p.description}</div>`)
+          .join("");
+        return `
+  <div style="margin:20px 0;padding:20px;border:1.5px solid ${STAGE_COLORS[i % STAGE_COLORS.length].split(" ")[0].replace("text-", "border-") || "#c0623e"};border-radius:12px;background:#0d0d0d">
+    <h3 style="margin:0 0 4px;color:#e8855a;font-size:16px">${i + 1}. ${s.title}</h3>
+    <p style="margin:0 0 12px;color:#888;font-size:12px">⏱ ${s.duration}${s.goal ? ` — ${s.goal}` : ""}</p>
+    ${s.skills?.length ? `<p style="margin:0 0 8px"><span style="color:#666;font-size:11px">НАВЫКИ:</span> <span style="color:#ccc">${s.skills.join(", ")}</span></p>` : ""}
+    ${resources ? `<p style="margin:0 0 8px"><span style="color:#666;font-size:11px">РЕСУРСЫ:</span> <span style="color:#ccc">${resources}</span></p>` : ""}
+    ${weekly ? `<div style="margin-top:12px"><div style="color:#666;font-size:11px;margin-bottom:6px">ПЛАН ПО НЕДЕЛЯМ:</div>${weekly}</div>` : ""}
+    ${projects ? `<div style="margin-top:12px"><div style="color:#666;font-size:11px;margin-bottom:6px">ПРОЕКТЫ:</div>${projects}</div>` : ""}
+    ${s.checkpoint ? `<p style="margin:12px 0 0;padding:8px 12px;background:#1a1a1a;border-radius:6px;color:#aaa;font-size:12px">✓ ${s.checkpoint}</p>` : ""}
+  </div>`;
+      }).join('<div style="text-align:center;color:#c0623e;font-size:18px;margin:4px 0">↓</div>');
+
+      const html = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NextPath — ${profession}</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#0a0503;color:#fff;max-width:720px;margin:0 auto;padding:32px 20px}
+  h1,h2{font-family:Georgia,serif}
+  a{color:#e8855a}
+  li{margin:3px 0;color:#bbb;font-size:13px}
+</style>
+</head>
+<body>
+<div style="border-bottom:2px solid #c0623e;padding-bottom:16px;margin-bottom:28px;display:flex;justify-content:space-between;align-items:flex-end">
+  <div>
+    <div style="font-size:22px;font-weight:800;color:#c0623e">NextPath</div>
+    <div style="font-size:12px;color:#666;margin-top:2px">Персональный план развития</div>
+  </div>
+  <div style="text-align:right;font-size:11px;color:#555">${new Date().toLocaleDateString("ru-RU")}<br>nextpath.su</div>
+</div>
+<h1 style="margin:0 0 6px;font-size:24px">${profession}</h1>
+${roadmapData.total_duration ? `<p style="color:#e8855a;margin:0 0 16px">⏱ ${roadmapData.total_duration}</p>` : ""}
+${roadmapData.summary ? `<p style="color:#888;line-height:1.6;margin:0 0 24px;font-size:14px">${roadmapData.summary}</p>` : ""}
+${stagesHtml}
+${roadmapData.final_goal?.requirements?.length ? `
+<div style="margin-top:24px;padding:20px;border:1.5px solid rgba(192,98,62,0.5);border-radius:12px;background:rgba(192,98,62,0.08)">
+  <h2 style="margin:0 0 12px;color:#e8855a;font-size:16px">Требования работодателей</h2>
+  ${roadmapData.final_goal.requirements.map((r) => `<div style="display:flex;gap:8px;margin:4px 0;font-size:13px;color:#ccc">▸ ${r}</div>`).join("")}
+</div>` : ""}
+<div style="margin-top:32px;padding-top:16px;border-top:1px solid #1a1a1a;display:flex;justify-content:space-between;font-size:11px;color:#444">
+  <span>NextPath — AI-система персонального карьерного сопровождения</span>
+  <span>nextpath.su</span>
+</div>
+</body>
+</html>`;
+
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `nextpath-план.html`;
+      a.download = `nextpath-${(userData.targetProfession || "plan").replace(/[^a-zа-я0-9]/gi, "-")}.html`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
-      console.error("[download] error:", err);
-    } finally {
-      setPdfLoading(false);
+      console.error("[download]", err);
     }
   };
 

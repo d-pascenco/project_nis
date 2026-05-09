@@ -1,7 +1,5 @@
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
 CREATE TABLE IF NOT EXISTS shared_roadmaps (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id          VARCHAR(36) PRIMARY KEY,
     roadmap     JSONB NOT NULL,
     form_data   JSONB,
     profession  VARCHAR(255),

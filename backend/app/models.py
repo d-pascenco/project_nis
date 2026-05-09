@@ -10,7 +10,7 @@ from app.database import Base
 class SharedRoadmap(Base):
     __tablename__ = "shared_roadmaps"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, index=True)
     roadmap: Mapped[dict] = mapped_column(JSONB, nullable=False)
     form_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     profession: Mapped[str | None] = mapped_column(String(255), nullable=True)

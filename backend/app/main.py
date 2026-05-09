@@ -555,21 +555,24 @@ def save_form_data(
 @app.post("/api/share")
 def create_share(payload: RoadmapSave, db: Session = Depends(get_db)) -> dict:
     """Создаёт публичную ссылку на роудмап (без авторизации)."""
-    import uuid
+    import uuid as uuid_module
+    share_id = str(uuid_module.uuid4())
+    stages = payload.roadmap.get("stages") or []
+    profession = stages[0].get("title") if stages else None
     share = SharedRoadmap(
-        id=str(uuid.uuid4()),
+        id=share_id,
         roadmap=payload.roadmap,
-        profession=payload.roadmap.get("stages", [{}])[0].get("title") if payload.roadmap.get("stages") else None,
+        profession=profession,
     )
     try:
         db.add(share)
         db.commit()
-        db.refresh(share)
-        logger.info("Share created: id=%s", share.id)
+        logger.info("Share created: id=%s", share_id)
     except SQLAlchemyError as exc:
         db.rollback()
+        logger.error("Share DB error: %s", exc)
         raise HTTPException(status_code=503, detail="Database error") from exc
-    return {"id": share.id}
+    return {"id": share_id}
 
 
 @app.get("/api/share/{share_id}")
