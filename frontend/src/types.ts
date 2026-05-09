@@ -121,4 +121,8 @@ export interface OnboardingFormData {
   needMentorship: boolean;
   additionalInfo: string;
   scheduleItems: ScheduleItem[];
+  // Skills: current vs desired
+  targetHardSkills: string[];
+  targetSoftSkills: string[];
+  privacyAccepted: boolean;
 }

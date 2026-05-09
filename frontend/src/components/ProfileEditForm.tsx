@@ -25,7 +25,7 @@ const DEFAULT: OnboardingFormData = {
   yearsExperience: "", currentRole: "", cvSummary: "",
   targetProfession: "", targetIndustry: "", timeline: "",
   motivation: "", priorities: [],
-  technicalSkills: [], softSkills: [],
+  technicalSkills: [], softSkills: [], targetHardSkills: [], targetSoftSkills: [],
   languages: [], learningStyle: "",
   hoursPerWeek: 15, budget: "", healthConsiderations: "",
   preferOnline: true, preferRussian: true,
@@ -120,7 +120,7 @@ export const ProfileEditForm = ({ open, onClose, initialData, onRoadmapUpdated, 
       );
       case 3: return (
         <SkillsStep
-          data={{ technicalSkills: formData.technicalSkills, softSkills: formData.softSkills, languages: formData.languages, learningStyle: formData.learningStyle }}
+          data={{ technicalSkills: formData.technicalSkills, softSkills: formData.softSkills, targetHardSkills: formData.targetHardSkills || [], targetSoftSkills: formData.targetSoftSkills || [], languages: formData.languages, learningStyle: formData.learningStyle }}
           onChange={update}
         />
       );

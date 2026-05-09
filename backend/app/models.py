@@ -64,5 +64,7 @@ class UserForm(Base):
     need_mentorship: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     additional_info: Mapped[str | None] = mapped_column(Text, nullable=True)
     schedule_items: Mapped[list[dict]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    target_hard_skills: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    target_soft_skills: Mapped[list[str]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

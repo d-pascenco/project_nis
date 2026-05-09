@@ -56,6 +56,8 @@ class UserFormCreate(BaseModel):
     need_mentorship: bool | None = Field(default=None, validation_alias=AliasChoices("needMentorship", "need_mentorship"))
     additional_info: str | None = Field(default=None, validation_alias=AliasChoices("additionalInfo", "additional_info"))
     schedule_items: list[dict] = Field(default_factory=list, validation_alias=AliasChoices("scheduleItems", "schedule_items"))
+    target_hard_skills: list[str] = Field(default_factory=list, validation_alias=AliasChoices("targetHardSkills", "target_hard_skills"))
+    target_soft_skills: list[str] = Field(default_factory=list, validation_alias=AliasChoices("targetSoftSkills", "target_soft_skills"))
 
     @field_validator("age", "years_experience", "hours_per_week", mode="before")
     @classmethod
@@ -64,7 +66,7 @@ class UserFormCreate(BaseModel):
             return None
         return value
 
-    @field_validator("priorities", "technical_skills", "soft_skills", mode="before")
+    @field_validator("priorities", "technical_skills", "soft_skills", "target_hard_skills", "target_soft_skills", mode="before")
     @classmethod
     def empty_list_for_none(cls, value: Any) -> Any:
         return [] if value is None else value

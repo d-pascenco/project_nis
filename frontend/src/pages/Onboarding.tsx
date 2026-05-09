@@ -41,6 +41,8 @@ const initialFormData: OnboardingFormData = {
   priorities: [],
   technicalSkills: [],
   softSkills: [],
+  targetHardSkills: [],
+  targetSoftSkills: [],
   languages: [],
   learningStyle: "",
   hoursPerWeek: 15,
@@ -51,6 +53,7 @@ const initialFormData: OnboardingFormData = {
   needMentorship: false,
   additionalInfo: "",
   scheduleItems: [],
+  privacyAccepted: false,
 };
 
 const Onboarding = () => {
@@ -201,6 +204,8 @@ const Onboarding = () => {
             data={{
               technicalSkills: formData.technicalSkills,
               softSkills: formData.softSkills,
+              targetHardSkills: formData.targetHardSkills,
+              targetSoftSkills: formData.targetSoftSkills,
               languages: formData.languages,
               learningStyle: formData.learningStyle,
             }}
@@ -285,13 +290,36 @@ const Onboarding = () => {
               </p>
             )}
 
+            {/* Privacy consent — only on last step */}
+            {currentStep === steps.length - 1 && (
+              <label className="flex items-start gap-3 cursor-pointer mb-4 p-4 rounded-xl bg-secondary/30 border border-border">
+                <input
+                  type="checkbox"
+                  checked={formData.privacyAccepted}
+                  onChange={(e) => updateFormData({ privacyAccepted: e.target.checked })}
+                  className="mt-0.5 h-4 w-4 rounded border-border accent-primary shrink-0"
+                />
+                <span className="text-sm text-muted-foreground leading-relaxed">
+                  Нажимая «Создать карту», я соглашаюсь с{" "}
+                  <a href="/privacy" target="_blank" className="text-primary underline underline-offset-2 hover:no-underline">
+                    политикой обработки персональных данных
+                  </a>{" "}
+                  и даю согласие на обработку введённых данных в целях формирования персонального плана развития.
+                </span>
+              </label>
+            )}
+
             {/* Navigation buttons */}
             <div className="flex items-center justify-between">
               <Button variant="ghost" onClick={handleBack}>
                 <ArrowLeft className="w-4 h-4" />
                 Назад
               </Button>
-              <Button variant="hero" onClick={handleNext} disabled={isSubmitting}>
+              <Button
+                variant="hero"
+                onClick={handleNext}
+                disabled={isSubmitting || (currentStep === steps.length - 1 && !formData.privacyAccepted)}
+              >
                 {currentStep === steps.length - 1 ? (
                   <>
                     <Sparkles className="w-4 h-4" />

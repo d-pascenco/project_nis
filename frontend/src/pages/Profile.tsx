@@ -58,6 +58,7 @@ const Profile = () => {
   const [savingName, setSavingName] = useState(false);
   const [editFormOpen, setEditFormOpen] = useState(false);
   const [visualOpen, setVisualOpen] = useState(false);
+  const [directRecalculating, setDirectRecalculating] = useState(false);
   const progressSaveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Load user ──────────────────────────────────────────────────────────────
@@ -114,6 +115,27 @@ const Profile = () => {
       }
     } catch (e) { console.error(e); }
     finally { setSavingName(false); }
+  };
+
+  const handleDirectRecalculate = async () => {
+    if (!userData?.form_data) return;
+    setDirectRecalculating(true);
+    try {
+      const res = await fetch("/api/me/recalculate", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ form_data: userData.form_data }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.detail || "Ошибка");
+      setUserData((prev) => prev ? { ...prev, roadmap: body } : prev);
+      setCompletedStages([]);
+      setSection("roadmap");
+    } catch (e) {
+      console.error("Recalculate error:", e);
+    } finally {
+      setDirectRecalculating(false);
+    }
   };
 
   const handleLogout = () => { clearToken(); goToMainSite(); };
@@ -452,8 +474,15 @@ const Profile = () => {
           <Button variant="outline" onClick={() => setEditFormOpen(true)}>
             <Pencil className="w-4 h-4" /> Редактировать профиль
           </Button>
-          <Button variant="hero" onClick={() => setEditFormOpen(true)}>
-            <RefreshCw className="w-4 h-4" /> Обновить план
+          <Button
+            variant="hero"
+            onClick={handleDirectRecalculate}
+            disabled={directRecalculating || !userData?.form_data}
+          >
+            {directRecalculating
+              ? <><RefreshCw className="w-4 h-4 animate-spin" /> Пересчитываем...</>
+              : <><RefreshCw className="w-4 h-4" /> Обновить план</>
+            }
           </Button>
         </div>
       </div>

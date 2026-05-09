@@ -181,6 +181,9 @@ def _build_roadmap_prompt(
     budget: str,
     lang: str,
     schedule_items: list | None = None,
+    target_hard_skills: list | None = None,
+    target_soft_skills: list | None = None,
+    soft_skills: list | None = None,
 ) -> str:
     schedule_hint = _hours_to_schedule(hours)
     schedule_section = ""
@@ -194,6 +197,14 @@ def _build_roadmap_prompt(
 Проанализируй занятое время и определи реальные свободные часы.
 Если утро занято работой — ставь занятия вечером. Если есть только выходные — адаптируй план под выходные.
 """
+    # Skills context
+    target_hard_str  = ", ".join(target_hard_skills) if target_hard_skills else ""
+    target_soft_str  = ", ".join(target_soft_skills) if target_soft_skills else ""
+    current_soft_str = ", ".join(soft_skills) if soft_skills else ""
+    skills_block = f"- Hard skills (имею): {skills_str or 'не указаны'}\n- Soft skills (имею): {current_soft_str or 'не указаны'}"
+    if target_hard_str or target_soft_str:
+        skills_block += f"\n- Hard skills (хочу освоить): {target_hard_str or 'не указаны'}\n- Soft skills (хочу освоить): {target_soft_str or 'не указаны'}\nПострой роудмап от текущих навыков к желаемым."
+
     return f"""Ты персональный карьерный коуч и лайф-менеджер. Твоя задача — составить ПОЛНЫЙ жизненный план {lang}.
 Клиент не должен ничего придумывать сам. Ты предусматриваешь всё: обучение, расписание дня, быт, сон, питание, тренировки, мотивацию, тайм-менеджмент.
 
@@ -201,10 +212,10 @@ def _build_roadmap_prompt(
 - Целевая профессия: {target_profession or "не указана"}
 - Индустрия: {target_industry or "любая"}
 - Желаемый срок: {timeline or "не указан"}
-- Текущие навыки: {skills_str}
 - Текущая роль: {current_role or "нет опыта"}
 - Доступных часов: {hours}ч/нед ({schedule_hint})
 - Бюджет: {budget or "без ограничений"}
+{skills_block}
 {schedule_section}
 
 Верни ТОЛЬКО валидный JSON без markdown:
@@ -333,6 +344,9 @@ def generate_roadmap(form_data: UserFormCreate) -> dict:
         form_data.budget or "",
         lang,
         form_data.schedule_items or [],
+        list(form_data.target_hard_skills),
+        list(form_data.target_soft_skills),
+        list(form_data.soft_skills),
     )
     return _call_groq(prompt, form_data.target_profession or "")
 
@@ -484,7 +498,10 @@ def recalculate_roadmap(
         user_id, target_profession, hours_per_week,
     )
 
-    schedule_items = fd.get("scheduleItems") or fd.get("schedule_items") or []
+    schedule_items    = fd.get("scheduleItems") or fd.get("schedule_items") or []
+    target_hard       = fd.get("targetHardSkills") or fd.get("target_hard_skills") or []
+    target_soft       = fd.get("targetSoftSkills") or fd.get("target_soft_skills") or []
+    current_soft      = fd.get("softSkills") or fd.get("soft_skills") or []
     prompt = _build_roadmap_prompt(
         target_profession or "",
         target_industry or "",
@@ -495,6 +512,9 @@ def recalculate_roadmap(
         budget or "",
         lang,
         schedule_items,
+        target_hard,
+        target_soft,
+        current_soft,
     )
     roadmap = _call_groq(prompt, target_profession or "")
     logger.info("Roadmap recalculated for user_id=%d stages=%d", user_id, len(roadmap.get("stages", [])))
