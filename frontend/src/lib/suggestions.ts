@@ -6,6 +6,112 @@ export const LANGUAGES = [
   "Украинский", "Белорусский", "Казахский", "Грузинский", "Армянский",
 ];
 
+// Города по странам для фильтрации
+export const CITIES_BY_COUNTRY: Record<string, string[]> = {
+  "Россия": [
+    "Москва", "Санкт-Петербург", "Новосибирск", "Екатеринбург", "Казань",
+    "Нижний Новгород", "Челябинск", "Самара", "Уфа", "Ростов-на-Дону",
+    "Красноярск", "Воронеж", "Пермь", "Волгоград", "Краснодар",
+    "Тюмень", "Саратов", "Тольятти", "Ижевск", "Барнаул",
+    "Ульяновск", "Иркутск", "Хабаровск", "Ярославль", "Владивосток",
+    "Махачкала", "Томск", "Оренбург", "Кемерово", "Новокузнецк",
+    "Рязань", "Астрахань", "Пенза", "Набережные Челны", "Липецк",
+    "Тула", "Киров", "Чебоксары", "Калининград", "Брянск",
+    "Курск", "Магнитогорск", "Иваново", "Тверь", "Ставрополь",
+    "Белгород", "Архангельск", "Владимир", "Сочи", "Сургут",
+  ],
+  "США": [
+    "New York", "Los Angeles", "Chicago", "Houston", "Phoenix",
+    "Philadelphia", "San Antonio", "San Diego", "Dallas", "San Jose",
+    "Austin", "Jacksonville", "Fort Worth", "Columbus", "San Francisco",
+    "Charlotte", "Indianapolis", "Seattle", "Denver", "Nashville",
+    "Boston", "Las Vegas", "Portland", "Memphis", "Atlanta",
+    "Miami", "Minneapolis", "New Orleans", "Washington D.C.", "Detroit",
+  ],
+  "United States": [
+    "New York", "Los Angeles", "Chicago", "Houston", "Phoenix",
+    "San Francisco", "Seattle", "Boston", "Miami", "Atlanta",
+    "Dallas", "Denver", "Austin", "Las Vegas", "Washington D.C.",
+  ],
+  "Германия": [
+    "Berlin", "Hamburg", "Munich", "Cologne", "Frankfurt",
+    "Stuttgart", "Düsseldorf", "Leipzig", "Dortmund", "Essen",
+    "Bremen", "Dresden", "Hanover", "Nuremberg", "Duisburg",
+  ],
+  "Germany": ["Berlin", "Hamburg", "Munich", "Cologne", "Frankfurt", "Stuttgart"],
+  "Великобритания": [
+    "London", "Birmingham", "Manchester", "Glasgow", "Leeds",
+    "Liverpool", "Bristol", "Edinburgh", "Sheffield", "Leicester",
+    "Cardiff", "Coventry", "Nottingham", "Bradford", "Belfast",
+  ],
+  "United Kingdom": ["London", "Manchester", "Birmingham", "Glasgow", "Edinburgh", "Bristol"],
+  "Франция": ["Paris", "Lyon", "Marseille", "Toulouse", "Nice", "Nantes", "Bordeaux", "Strasbourg"],
+  "France": ["Paris", "Lyon", "Marseille", "Toulouse", "Nice", "Nantes", "Bordeaux"],
+  "Испания": ["Madrid", "Barcelona", "Valencia", "Seville", "Zaragoza", "Málaga", "Murcia", "Bilbao"],
+  "Spain": ["Madrid", "Barcelona", "Valencia", "Seville"],
+  "Италия": ["Rome", "Milan", "Naples", "Turin", "Palermo", "Genoa", "Bologna", "Florence", "Venice"],
+  "Italy": ["Rome", "Milan", "Naples", "Turin", "Florence", "Venice"],
+  "Польша": ["Warsaw", "Kraków", "Łódź", "Wrocław", "Poznań", "Gdańsk", "Szczecin", "Katowice"],
+  "Нидерланды": ["Amsterdam", "Rotterdam", "The Hague", "Utrecht", "Eindhoven"],
+  "Netherlands": ["Amsterdam", "Rotterdam", "The Hague", "Utrecht", "Eindhoven"],
+  "Швеция": ["Stockholm", "Gothenburg", "Malmö", "Uppsala", "Linköping"],
+  "Норвегия": ["Oslo", "Bergen", "Trondheim", "Stavanger"],
+  "Дания": ["Copenhagen", "Aarhus", "Odense", "Aalborg"],
+  "Финляндия": ["Helsinki", "Tampere", "Turku", "Oulu"],
+  "Швейцария": ["Zurich", "Geneva", "Basel", "Bern", "Lausanne"],
+  "Switzerland": ["Zurich", "Geneva", "Basel", "Bern", "Lausanne"],
+  "Австрия": ["Vienna", "Graz", "Linz", "Salzburg", "Innsbruck"],
+  "Бельгия": ["Brussels", "Antwerp", "Ghent", "Charleroi", "Liège"],
+  "Португалия": ["Lisbon", "Porto", "Braga", "Coimbra"],
+  "Чехия": ["Prague", "Brno", "Ostrava", "Plzeň"],
+  "Венгрия": ["Budapest", "Debrecen", "Miskolc", "Pécs"],
+  "Румыния": ["Bucharest", "Cluj-Napoca", "Timișoara", "Iași"],
+  "Греция": ["Athens", "Thessaloniki", "Patras", "Heraklion"],
+  "Израиль": ["Tel Aviv", "Jerusalem", "Haifa", "Beer Sheva", "Netanya"],
+  "Israel": ["Tel Aviv", "Jerusalem", "Haifa"],
+  "Турция": ["Istanbul", "Ankara", "Izmir", "Bursa", "Adana", "Gaziantep"],
+  "Turkey": ["Istanbul", "Ankara", "Izmir"],
+  "ОАЭ": ["Dubai", "Abu Dhabi", "Sharjah", "Ajman"],
+  "UAE": ["Dubai", "Abu Dhabi", "Sharjah"],
+  "Китай": ["Shanghai", "Beijing", "Shenzhen", "Guangzhou", "Chengdu", "Wuhan", "Xi'an", "Hangzhou"],
+  "China": ["Shanghai", "Beijing", "Shenzhen", "Guangzhou"],
+  "Япония": ["Tokyo", "Osaka", "Yokohama", "Nagoya", "Sapporo", "Kobe", "Kyoto", "Fukuoka"],
+  "Japan": ["Tokyo", "Osaka", "Yokohama", "Nagoya"],
+  "Южная Корея": ["Seoul", "Busan", "Incheon", "Daegu", "Daejeon", "Gwangju"],
+  "South Korea": ["Seoul", "Busan", "Incheon"],
+  "Индия": ["Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai", "Kolkata", "Pune", "Ahmedabad"],
+  "India": ["Mumbai", "Delhi", "Bangalore", "Hyderabad", "Chennai"],
+  "Сингапур": ["Singapore"],
+  "Singapore": ["Singapore"],
+  "Канада": ["Toronto", "Montreal", "Vancouver", "Calgary", "Ottawa", "Edmonton", "Winnipeg", "Quebec City"],
+  "Canada": ["Toronto", "Montreal", "Vancouver", "Calgary", "Ottawa"],
+  "Австралия": ["Sydney", "Melbourne", "Brisbane", "Perth", "Adelaide", "Gold Coast", "Canberra"],
+  "Australia": ["Sydney", "Melbourne", "Brisbane", "Perth", "Adelaide"],
+  "Новая Зеландия": ["Auckland", "Wellington", "Christchurch"],
+  "Бразилия": ["São Paulo", "Rio de Janeiro", "Brasília", "Salvador", "Fortaleza", "Belo Horizonte"],
+  "Аргентина": ["Buenos Aires", "Córdoba", "Rosario", "Mendoza"],
+  "Мексика": ["Mexico City", "Guadalajara", "Monterrey", "Puebla", "Tijuana"],
+  "Казахстан": ["Almaty", "Astana", "Shymkent", "Karaganda", "Aktobe"],
+  "Беларусь": ["Minsk", "Gomel", "Mogilev", "Vitebsk", "Grodno"],
+  "Украина": ["Kyiv", "Kharkiv", "Odessa", "Dnipro", "Lviv"],
+  "Грузия": ["Tbilisi", "Batumi", "Kutaisi"],
+  "Армения": ["Yerevan", "Gyumri", "Vanadzor"],
+  "Азербайджан": ["Baku", "Ganja", "Sumqayit"],
+  "Узбекистан": ["Tashkent", "Samarkand", "Namangan", "Andijan"],
+  "Кыргызстан": ["Bishkek", "Osh"],
+};
+
+// Получить города для страны (с fallback на все города)
+export function getCitiesForCountry(country: string): string[] {
+  if (!country) return ALL_CITIES;
+  const key = Object.keys(CITIES_BY_COUNTRY).find(
+    (k) => k.toLowerCase() === country.toLowerCase()
+  );
+  return key ? CITIES_BY_COUNTRY[key] : ALL_CITIES;
+}
+
+const ALL_CITIES = Object.values(CITIES_BY_COUNTRY).flat();
+
 export const CITIES = [
   // Россия
   "Москва", "Санкт-Петербург", "Новосибирск", "Екатеринбург", "Казань",

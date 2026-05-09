@@ -1,5 +1,14 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+/**
+ * Экран генерации роудмапа.
+ * Показывает анимированные шаги. Переход происходит когда:
+ *   1. API ответил (isLoadingDone=true)
+ *   2. Прошло минимальное время показа (MIN_MS)
+ * Анимация — визуальное дополнение, не блокирует переход.
+ */
+import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
+
+const MIN_MS = 4000; // минимум показываем столько, даже если API быстрый
 
 const STEPS = [
   { label: "Анализируем ваш профиль и цели",       icon: "🎯", ms: 900,  color: "#c0623e" },
@@ -11,7 +20,6 @@ const STEPS = [
   { label: "Настраиваем образ жизни и мотивацию",   icon: "🌿", ms: 800,  color: "#6384c7" },
   { label: "Финальная персонализация плана",        icon: "✨", ms: 700,  color: "#8263c7" },
 ];
-
 const TOTAL_MS = STEPS.reduce((s, st) => s + st.ms, 0);
 
 interface Props {
@@ -26,92 +34,91 @@ export const RoadmapGenerating = ({ targetProfession, isLoadingDone, onDoneShown
   const [overall, setOverall] = useState(0);
   const [fading, setFading] = useState(false);
 
-  // Stable callback ref — избегаем stale closure
+  // Ref чтобы не было stale closure в setTimeout
   const onDoneRef = useRef(onDoneShown);
   useEffect(() => { onDoneRef.current = onDoneShown; }, [onDoneShown]);
 
-  const triggerExit = useCallback(() => {
+  const mountTime = useRef(Date.now());
+  const exitScheduled = useRef(false);
+
+  // Функция выхода — вызываем ровно один раз
+  const scheduleExit = () => {
+    if (exitScheduled.current) return;
+    exitScheduled.current = true;
     setOverall(100);
     setFading(true);
-    const t = setTimeout(() => onDoneRef.current(), 600);
-    return () => clearTimeout(t);
-  }, []);
+    setTimeout(() => {
+      onDoneRef.current();
+    }, 550);
+  };
 
-  // ── Анимация шагов ──────────────────────────────────────────────────────────
-  const apiDoneRef = useRef(false);
-  const animDoneRef = useRef(false);
+  // ── Реагируем на завершение API ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!isLoadingDone) return;
+
+    const elapsed = Date.now() - mountTime.current;
+    const waitMore = Math.max(0, MIN_MS - elapsed);
+
+    // После MIN_MS (или сразу если уже прошло) — добавляем 500мс и выходим
+    const t = setTimeout(() => scheduleExit(), waitMore + 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoadingDone]);
+
+  // ── Анимация шагов (визуальная, не влияет на переход) ──────────────────────
+  const boostRef = useRef(false);
+  useEffect(() => {
+    if (isLoadingDone) boostRef.current = true;
+  }, [isLoadingDone]);
 
   useEffect(() => {
     const FPS = 30;
     const INTERVAL = 1000 / FPS;
     const elapsed = STEPS.map(() => 0);
-    let currentStep = 0;
-    let totalElapsed = 0;
+    let cur = 0;
+    let total = 0;
 
     const tick = setInterval(() => {
-      const boost = (apiDoneRef.current && totalElapsed / TOTAL_MS >= 0.7) ? 4 : 1;
+      const boost = boostRef.current && total / TOTAL_MS >= 0.6 ? 5 : 1;
 
-      if (currentStep < STEPS.length) {
-        const step = STEPS[currentStep];
-        elapsed[currentStep] = Math.min(elapsed[currentStep] + INTERVAL * boost, step.ms);
-        const pct = Math.round((elapsed[currentStep] / step.ms) * 100);
+      if (cur < STEPS.length) {
+        const step = STEPS[cur];
+        elapsed[cur] = Math.min(elapsed[cur] + INTERVAL * boost, step.ms);
+        const pct = Math.round((elapsed[cur] / step.ms) * 100);
 
         setStepProgress(prev => {
           const next = [...prev];
-          next[currentStep] = pct;
+          next[cur] = pct;
           return next;
         });
 
-        totalElapsed = elapsed.reduce((s, e) => s + e, 0);
-        setOverall(Math.min(Math.round((totalElapsed / TOTAL_MS) * 100), 99));
+        total = elapsed.reduce((s, e) => s + e, 0);
+        const ov = Math.min(Math.round((total / TOTAL_MS) * 100), 99);
+        setOverall(prev => (exitScheduled.current ? prev : ov));
 
-        if (pct >= 100 && currentStep < STEPS.length - 1) {
-          currentStep++;
-          setActiveStep(currentStep);
+        if (pct >= 100 && cur < STEPS.length - 1) {
+          cur++;
+          setActiveStep(cur);
         }
-
-        // Последний шаг завершён
-        if (pct >= 100 && currentStep === STEPS.length - 1) {
+        if (pct >= 100 && cur === STEPS.length - 1) {
           clearInterval(tick);
-          animDoneRef.current = true;
-          if (apiDoneRef.current) triggerExit();
-          // иначе ждём API (следующий useEffect)
         }
       }
     }, INTERVAL);
 
     return () => clearInterval(tick);
-  }, [triggerExit]);
-
-  // ── Реакция на завершение API ────────────────────────────────────────────────
-  useEffect(() => {
-    if (!isLoadingDone) return;
-    apiDoneRef.current = true;
-
-    if (animDoneRef.current) {
-      // Анимация уже завершена — уходим сразу
-      triggerExit();
-    } else {
-      // Анимация ещё идёт — она ускорится (boost=4)
-      // Страховой таймаут: если через 6с анимация всё ещё не закончилась — уходим принудительно
-      const failsafe = setTimeout(() => {
-        if (!animDoneRef.current) triggerExit();
-      }, 6000);
-      return () => clearTimeout(failsafe);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoadingDone]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 100,
       background: "radial-gradient(ellipse at 50% 30%, rgba(40,12,4,1) 0%, rgba(6,3,1,1) 70%)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      padding: "20px",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
       opacity: fading ? 0 : 1,
-      transition: fading ? "opacity 0.5s ease" : "none",
+      transition: "opacity 0.55s ease",
       pointerEvents: fading ? "none" : "auto",
     }}>
+      {/* Ambient glow */}
       <div style={{ position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)", width: 600, height: 400, borderRadius: "50%", pointerEvents: "none", background: "radial-gradient(circle, rgba(192,98,62,0.12) 0%, transparent 65%)" }} />
 
       <div style={{ width: "100%", maxWidth: 520, position: "relative", zIndex: 1 }}>
@@ -138,7 +145,7 @@ export const RoadmapGenerating = ({ targetProfession, isLoadingDone, onDoneShown
             <span style={{ color: "#c0623e", fontWeight: 700 }}>{overall}%</span>
           </div>
           <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.07)", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${overall}%`, background: "linear-gradient(90deg, #c0623e, #e8855a)", borderRadius: 3, transition: "width 0.25s ease", boxShadow: "0 0 12px rgba(192,98,62,0.6)" }} />
+            <div style={{ height: "100%", width: `${overall}%`, background: "linear-gradient(90deg, #c0623e, #e8855a)", borderRadius: 3, transition: "width 0.3s ease", boxShadow: "0 0 12px rgba(192,98,62,0.6)" }} />
           </div>
         </div>
 
@@ -163,7 +170,7 @@ export const RoadmapGenerating = ({ targetProfession, isLoadingDone, onDoneShown
                   <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: isDone ? "rgba(255,255,255,0.45)" : isActive ? "#fff" : "rgba(255,255,255,0.3)", transition: "color 0.3s" }}>
                     {step.label}
                   </span>
-                  <span style={{ fontSize: 12, fontWeight: 700, minWidth: 36, textAlign: "right", color: isDone ? "rgba(255,255,255,0.25)" : isActive ? step.color : "rgba(255,255,255,0.15)", transition: "color 0.3s" }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, minWidth: 36, textAlign: "right", color: isDone ? "rgba(255,255,255,0.25)" : isActive ? step.color : "rgba(255,255,255,0.15)" }}>
                     {pct}%
                   </span>
                 </div>

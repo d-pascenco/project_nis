@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormCard } from "@/components/FormCard";
 import { Autocomplete } from "@/components/Autocomplete";
-import { CITIES, COUNTRIES } from "@/lib/suggestions";
+import { COUNTRIES, getCitiesForCountry } from "@/lib/suggestions";
 import { User, MapPin, Calendar, Globe, UserPlus } from "lucide-react";
 import { goToCabinet } from "@/lib/urls";
 import { isAuthenticated } from "@/lib/auth";
@@ -151,10 +151,15 @@ export const BasicInfoStep = ({ data, onChange }: BasicInfoStepProps) => {
             id="location"
             value={data.location}
             onChange={(val) => onChange({ location: val })}
-            suggestions={CITIES}
-            placeholder="Москва / Moscow"
+            suggestions={getCitiesForCountry(data.country || "")}
+            placeholder={data.country ? "Введите город..." : "Сначала выберите страну"}
             onValidate={validateCity}
           />
+          {data.country && getCitiesForCountry(data.country).length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              Показаны города {data.country}
+            </p>
+          )}
         </div>
 
         {/* Текущий статус */}
