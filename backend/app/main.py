@@ -312,21 +312,46 @@ def _call_groq(prompt: str, profession: str) -> dict:
     groq_api_key = os.getenv("GROQ_API_KEY", "").strip()
     if not groq_api_key:
         raise HTTPException(status_code=503, detail="GROQ_API_KEY not set")
-    try:
-        client = GroqClient(api_key=groq_api_key)
-        completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.6,
-            max_tokens=8000,
-        )
-        result = json.loads(completion.choices[0].message.content)
-        logger.info("Roadmap generated: profession=%s stages=%d", profession, len(result.get("stages", [])))
-        return result
-    except Exception as exc:
-        logger.error("Groq API error: %s\n%s", exc, traceback.format_exc())
-        raise HTTPException(status_code=502, detail=f"Groq API error: {exc}") from exc
+
+    client = GroqClient(api_key=groq_api_key)
+
+    # Пробуем основную модель, при лимите — fallback на лёгкую
+    models = [
+        ("llama-3.3-70b-versatile", 4000),
+        ("llama-3.1-8b-instant",    4000),
+    ]
+
+    last_exc: Exception | None = None
+    for model, max_tok in models:
+        try:
+            completion = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+                temperature=0.6,
+                max_tokens=max_tok,
+            )
+            result = json.loads(completion.choices[0].message.content)
+            logger.info("Roadmap generated: model=%s profession=%s stages=%d",
+                        model, profession, len(result.get("stages", [])))
+            return result
+        except Exception as exc:
+            last_exc = exc
+            exc_str = str(exc)
+            if "rate_limit_exceeded" in exc_str or "429" in exc_str:
+                logger.warning("Rate limit on %s, trying next model...", model)
+                continue
+            logger.error("Groq error (%s): %s", model, exc)
+            break
+
+    # Все модели исчерпаны
+    logger.error("All Groq models failed: %s", last_exc)
+    if last_exc and ("rate_limit_exceeded" in str(last_exc) or "429" in str(last_exc)):
+        raise HTTPException(
+            status_code=429,
+            detail="Превышен дневной лимит AI-запросов. Попробуйте через час.",
+        ) from last_exc
+    raise HTTPException(status_code=502, detail=f"AI недоступен: {last_exc}") from last_exc
 
 
 @app.post("/api/roadmap")

@@ -141,11 +141,19 @@ const Onboarding = () => {
       if (res.ok) {
         const data = await res.json();
         setRoadmapData(data);
+      } else if (res.status === 429) {
+        // Лимит Groq — показываем понятное сообщение вместо fallback
+        const body = await res.json().catch(() => ({}));
+        const detail = body.detail || "Превышен лимит AI-запросов. Попробуйте через час.";
+        setValidationError(detail);
+        setShowGenerating(false);
+        setRoadmapLoading(false);
+        return;
       }
     } catch {
-      // При ошибке API — покажем статичный fallback-роудмап
+      // При ошибке сети — покажем статичный fallback-роудмап
     } finally {
-      setRoadmapLoading(false);  // useEffect выше увидит это и запланирует переход
+      setRoadmapLoading(false);
     }
   };
 
