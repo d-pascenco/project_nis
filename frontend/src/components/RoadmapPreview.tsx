@@ -291,18 +291,12 @@ export const RoadmapPreview = ({
 
   const handleShare = async () => {
     if (!roadmapData) {
-      // Нет данных роудмапа — копируем ссылку на сайт
-      try {
-        await navigator.clipboard.writeText("https://nextpath.su");
-        setShareMsg("Ссылка на NextPath скопирована!");
-      } catch {
-        setShareMsg("Не удалось скопировать ссылку");
-      }
+      setShareMsg("Дождитесь генерации плана перед отправкой ссылки");
       setTimeout(() => setShareMsg(null), 3000);
       return;
     }
 
-    setShareMsg("Создаём ссылку...");
+    setShareMsg("Создаём уникальную ссылку...");
     try {
       const res = await fetch("/api/share", {
         method: "POST",
@@ -310,16 +304,20 @@ export const RoadmapPreview = ({
         body: JSON.stringify({ roadmap: roadmapData }),
       });
 
+      let body: Record<string, unknown> = {};
+      try { body = await res.json(); } catch { /* ignore */ }
+
       if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error(errBody.detail || `HTTP ${res.status}`);
+        const detail = (body.detail as string) || `HTTP ${res.status}`;
+        throw new Error(detail);
       }
 
-      const body = await res.json();
-      const shareId = body.id;
-      if (!shareId) throw new Error("no id in response");
+      const shareId = body.id as string | undefined;
+      if (!shareId) throw new Error("Сервер не вернул ID ссылки");
 
-      const shareUrl = `${window.location.origin}/shared/${shareId}`;
+      // Всегда строим ссылку на nextpath.su (не my.nextpath.su)
+      const origin = import.meta.env.VITE_MAIN_URL || "https://nextpath.su";
+      const shareUrl = `${origin}/shared/${shareId}`;
 
       if (navigator.share) {
         await navigator.share({ title: "Мой план развития — NextPath", url: shareUrl });
@@ -327,13 +325,13 @@ export const RoadmapPreview = ({
       } else {
         await navigator.clipboard.writeText(shareUrl);
         setShareMsg("Ссылка скопирована!");
-        setTimeout(() => setShareMsg(null), 3500);
+        setTimeout(() => setShareMsg(null), 4000);
       }
     } catch (err) {
       console.error("[share]", err);
       const msg = err instanceof Error ? err.message : String(err);
       setShareMsg(`Ошибка: ${msg}`);
-      setTimeout(() => setShareMsg(null), 5000);
+      setTimeout(() => setShareMsg(null), 6000);
     }
   };
 
