@@ -9,6 +9,7 @@ import { Loader2, Sparkles } from "lucide-react";
 import Index from "./pages/Index";
 import Onboarding from "./pages/Onboarding";
 import Profile from "./pages/Profile";
+import Shared from "./pages/Shared";
 import NotFound from "./pages/NotFound";
 import { Logo } from "./components/Logo";
 import { IS_CABINET_DOMAIN, IS_DEV, CABINET_ORIGIN } from "./lib/urls";
@@ -151,6 +152,7 @@ const MainRoutes = () => (
   <Routes>
     <Route path="/" element={<Index />} />
     <Route path="/onboarding" element={<Onboarding />} />
+    <Route path="/shared/:id" element={<Shared />} />
     <Route path="/profile" element={<ProfileRedirect />} />
     <Route path="*" element={<NotFound />} />
   </Routes>

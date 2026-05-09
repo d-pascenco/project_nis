@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FormCard } from "@/components/FormCard";
 import { Autocomplete } from "@/components/Autocomplete";
 import { PROFESSIONS } from "@/lib/suggestions";
-import { Target, Clock, TrendingUp, Lightbulb } from "lucide-react";
+import { Target, Clock, TrendingUp, AlignLeft } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface GoalsStepProps {
@@ -19,12 +19,12 @@ interface GoalsStepProps {
 }
 
 const priorityOptions = [
-  { id: "salary",     label: "💰 Высокая зарплата" },
-  { id: "balance",    label: "⚖️ Work-life баланс" },
-  { id: "growth",     label: "📈 Карьерный рост" },
-  { id: "creativity", label: "🎨 Творческая работа" },
-  { id: "impact",     label: "🌍 Социальное влияние" },
-  { id: "remote",     label: "🏠 Удалённая работа" },
+  { id: "salary",     label: "Высокая зарплата" },
+  { id: "balance",    label: "Work-life баланс" },
+  { id: "growth",     label: "Карьерный рост" },
+  { id: "creativity", label: "Творческая работа" },
+  { id: "impact",     label: "Социальное влияние" },
+  { id: "remote",     label: "Удалённая работа" },
 ];
 
 export const GoalsStep = ({ data, onChange }: GoalsStepProps) => {
@@ -149,7 +149,7 @@ export const GoalsStep = ({ data, onChange }: GoalsStepProps) => {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="motivation" className="flex items-center gap-2">
-              <Lightbulb className="w-4 h-4 text-accent" />
+              <AlignLeft className="w-4 h-4 text-accent" />
               Почему именно эта цель? <span className="text-destructive">*</span>
             </Label>
             <span className={`text-xs font-medium tabular-nums ${

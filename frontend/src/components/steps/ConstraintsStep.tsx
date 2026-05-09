@@ -3,7 +3,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormCard } from "@/components/FormCard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Clock, Heart, Wallet, Settings2 } from "lucide-react";
+import { Clock, Heart, Wallet, Settings2, Monitor, Globe, Users } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
 interface ConstraintsStepProps {
@@ -58,7 +58,7 @@ export const ConstraintsStep = ({ data, onChange }: ConstraintsStepProps) => {
             </div>
           </div>
           <p className="text-xs text-muted-foreground bg-secondary/40 px-3 py-2 rounded-lg">
-            💡 {hoursHint(data.hoursPerWeek)}
+            {hoursHint(data.hoursPerWeek)}
           </p>
         </div>
 
@@ -115,21 +115,24 @@ export const ConstraintsStep = ({ data, onChange }: ConstraintsStepProps) => {
                 id: "online",
                 checked: data.preferOnline,
                 onChange: (v: boolean) => onChange({ preferOnline: v }),
-                label: "🖥 Предпочитаю онлайн-обучение",
+                icon: Monitor,
+                label: "Предпочитаю онлайн-обучение",
                 hint: "Курсы, вебинары, видео — без физического присутствия",
               },
               {
                 id: "russian",
                 checked: data.preferRussian,
                 onChange: (v: boolean) => onChange({ preferRussian: v }),
-                label: "🇷🇺 Предпочитаю материалы на русском языке",
+                icon: Globe,
+                label: "Предпочитаю материалы на русском языке",
                 hint: "AI подберёт русскоязычные ресурсы в первую очередь",
               },
               {
                 id: "mentorship",
                 checked: data.needMentorship,
                 onChange: (v: boolean) => onChange({ needMentorship: v }),
-                label: "👨‍💼 Хочу ментора / наставника",
+                icon: Users,
+                label: "Хочу ментора / наставника",
                 hint: "Живой эксперт, который направляет и даёт обратную связь",
               },
             ].map((item) => (
@@ -149,11 +152,14 @@ export const ConstraintsStep = ({ data, onChange }: ConstraintsStepProps) => {
                   onClick={(e) => e.stopPropagation()}
                   className="mt-0.5"
                 />
-                <div>
-                  <Label htmlFor={item.id} className="cursor-pointer text-sm font-medium">
-                    {item.label}
-                  </Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">{item.hint}</p>
+                <div className="flex items-start gap-2.5">
+                  <item.icon className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                  <div>
+                    <Label htmlFor={item.id} className="cursor-pointer text-sm font-medium">
+                      {item.label}
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.hint}</p>
+                  </div>
                 </div>
               </div>
             ))}

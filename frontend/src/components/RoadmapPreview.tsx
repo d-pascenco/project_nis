@@ -252,16 +252,20 @@ export const RoadmapPreview = ({
   const [authError, setAuthError] = useState<string | null>(null);
   const [shareMsg, setShareMsg] = useState<string | null>(null);
   const [visualOpen, setVisualOpen] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const stages = roadmapData?.stages ?? FALLBACK_STAGES;
   const profession = PROFESSION_LABELS[userData.targetProfession] || userData.targetProfession || "цели";
   const timeline = TIMELINE_LABELS[userData.timeline] || roadmapData?.total_duration || "6 месяцев";
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!roadmapData) return;
-    import("@/lib/generate-html")
-      .then(({ downloadRoadmapHTML }) => {
-        downloadRoadmapHTML({
+    setPdfLoading(true);
+    try {
+      const { generateRoadmapHTML } = await import("@/lib/generate-html");
+      let html: string;
+      try {
+        html = generateRoadmapHTML({
           roadmapData,
           userName: userData.fullName || "",
           targetProfession: userData.targetProfession || "",
@@ -269,20 +273,52 @@ export const RoadmapPreview = ({
           technicalSkills: formSnapshot?.technicalSkills,
           scheduleItems: formSnapshot?.scheduleItems,
         });
-      })
-      .catch((err) => console.error("[download] failed:", err));
+      } catch (genErr) {
+        console.error("[download] HTML generation error:", genErr);
+        // Fallback: minimal HTML
+        html = `<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>NextPath Plan</title></head><body><pre>${JSON.stringify(roadmapData, null, 2)}</pre></body></html>`;
+      }
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `nextpath-план.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (err) {
+      console.error("[download] error:", err);
+    } finally {
+      setPdfLoading(false);
+    }
   };
 
   const handleShare = async () => {
+    if (!roadmapData) return;
+    setShareMsg("Создаём ссылку...");
     try {
+      // Создаём уникальную публичную ссылку через бэкенд
+      const res = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roadmap: roadmapData }),
+      });
+      if (!res.ok) throw new Error("server error");
+      const { id } = await res.json();
+      const shareUrl = `${window.location.origin}/shared/${id}`;
+
       if (navigator.share) {
-        await navigator.share({ title: `Мой план — NextPath`, url: window.location.href });
+        await navigator.share({ title: "Мой план развития — NextPath", url: shareUrl });
       } else {
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(shareUrl);
         setShareMsg("Ссылка скопирована!");
-        setTimeout(() => setShareMsg(null), 2500);
+        setTimeout(() => setShareMsg(null), 3000);
       }
-    } catch { /* cancelled */ }
+    } catch {
+      setShareMsg("Ошибка — попробуйте ещё раз");
+      setTimeout(() => setShareMsg(null), 2500);
+    }
   };
 
   const handleGoogleSuccess = async (resp: { credential?: string }) => {

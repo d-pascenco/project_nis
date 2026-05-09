@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.database import Base, engine, get_db
 from app.env import load_environment
-from app.models import User, UserForm
+from app.models import SharedRoadmap, User, UserForm
 from app.schemas import UserFormCreate, UserFormResponse
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
@@ -550,6 +550,34 @@ def save_form_data(
         db.rollback()
         raise HTTPException(status_code=503, detail="Database error") from exc
     return {"ok": True}
+
+
+@app.post("/api/share")
+def create_share(payload: RoadmapSave, db: Session = Depends(get_db)) -> dict:
+    """Создаёт публичную ссылку на роудмап (без авторизации)."""
+    import uuid
+    share = SharedRoadmap(
+        id=str(uuid.uuid4()),
+        roadmap=payload.roadmap,
+        profession=payload.roadmap.get("stages", [{}])[0].get("title") if payload.roadmap.get("stages") else None,
+    )
+    try:
+        db.add(share)
+        db.commit()
+        db.refresh(share)
+        logger.info("Share created: id=%s", share.id)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=503, detail="Database error") from exc
+    return {"id": share.id}
+
+
+@app.get("/api/share/{share_id}")
+def get_share(share_id: str, db: Session = Depends(get_db)) -> dict:
+    share = db.query(SharedRoadmap).filter(SharedRoadmap.id == share_id).first()
+    if not share:
+        raise HTTPException(status_code=404, detail="Shared roadmap not found")
+    return {"roadmap": share.roadmap, "profession": share.profession}
 
 
 @app.post("/api/me/roadmap")

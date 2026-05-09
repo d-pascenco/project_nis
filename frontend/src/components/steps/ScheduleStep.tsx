@@ -12,14 +12,14 @@ interface ScheduleStepProps {
 }
 
 const PRESETS: Array<Omit<ScheduleItem, "id"> & { label: string }> = [
-  { label: "💼 Работа",          activity: "💼 Работа",          from: "09:00", to: "18:00", days: "Пн-Пт" },
-  { label: "🎓 Учёба/вуз",       activity: "🎓 Учёба/вуз",       from: "09:00", to: "15:00", days: "Пн-Пт" },
-  { label: "😴 Сон",             activity: "😴 Сон",             from: "23:00", to: "07:00", days: "Ежедневно" },
-  { label: "🏃 Тренировки",      activity: "🏃 Тренировки",      from: "07:00", to: "08:00", days: "Вт/Чт/Сб" },
-  { label: "👨‍👩‍👧 Дети/семья",  activity: "👨‍👩‍👧 Дети/семья",  from: "17:00", to: "21:00", days: "Ежедневно" },
-  { label: "🍽 Обед",            activity: "🍽 Обед",            from: "13:00", to: "14:00", days: "Пн-Пт" },
-  { label: "🚗 Дорога",          activity: "🚗 Дорога",          from: "08:00", to: "09:00", days: "Пн-Пт" },
-  { label: "🏠 Домашние дела",   activity: "🏠 Домашние дела",   from: "20:00", to: "22:00", days: "Ежедневно" },
+  { label: "Работа",         activity: "Работа",         from: "09:00", to: "18:00", days: "Пн-Пт" },
+  { label: "Учёба/вуз",      activity: "Учёба/вуз",      from: "09:00", to: "15:00", days: "Пн-Пт" },
+  { label: "Сон",            activity: "Сон",            from: "23:00", to: "07:00", days: "Ежедневно" },
+  { label: "Тренировки",     activity: "Тренировки",     from: "07:00", to: "08:00", days: "Вт/Чт/Сб" },
+  { label: "Дети/семья",     activity: "Дети/семья",     from: "17:00", to: "21:00", days: "Ежедневно" },
+  { label: "Обед",           activity: "Обед",           from: "13:00", to: "14:00", days: "Пн-Пт" },
+  { label: "Дорога",         activity: "Дорога",         from: "08:00", to: "09:00", days: "Пн-Пт" },
+  { label: "Домашние дела",  activity: "Домашние дела",  from: "20:00", to: "22:00", days: "Ежедневно" },
 ];
 
 const DAYS_OPTIONS = [
