@@ -108,7 +108,7 @@ export const ScheduleStep = ({ data, onChange }: ScheduleStepProps) => {
                   placeholder="Чем заняты..."
                   value={item.activity}
                   onChange={(e) => update(item.id, "activity", e.target.value)}
-                  className="h-9 flex-1 min-w-0"
+                  className={`h-9 flex-1 min-w-0 ${!item.activity.trim() ? "border-destructive/50" : ""}`}
                 />
 
                 {/* Time range */}

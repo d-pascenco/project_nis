@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Autocomplete } from "@/components/Autocomplete";
 import { LANGUAGES } from "@/lib/suggestions";
-import { Plus, X } from "lucide-react";
+import { Plus, X, BookOpen } from "lucide-react";
+import { Label } from "@/components/ui/label";
 import { Slider as SliderUI } from "@/components/ui/slider";
 
 interface SkillsStepProps {
@@ -29,7 +30,6 @@ const TARGET_SOFT  = ["Публичные выступления", "Перего
 const LEVEL_MAP: Record<number, string> = { 0: "Начальный", 25: "Базовый", 50: "Средний", 75: "Продвинутый", 100: "Свободный" };
 const level = (n: number) => LEVEL_MAP[Math.round(n / 25) * 25] ?? "Средний";
 
-const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 
 // ── Reusable skill block ──────────────────────────────────────────────────────
 
@@ -232,6 +232,42 @@ export const SkillsStep = ({ data, onChange }: SkillsStepProps) => {
               <Plus className="w-4 h-4" />
             </Button>
           </div>
+        </div>
+      </FormCard>
+
+      {/* ── Стиль обучения ─────────────────────────────────────── */}
+      <FormCard title="Стиль обучения">
+        <div className="space-y-3">
+          <Label className="flex items-center gap-2 text-sm">
+            <BookOpen className="w-4 h-4 text-primary" />
+            Как вам лучше всего усваивается материал?
+          </Label>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { value: "video",    label: "Видео-курсы" },
+              { value: "projects", label: "Практические проекты" },
+              { value: "books",    label: "Книги и статьи" },
+              { value: "mixed",    label: "Смешанный формат" },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => onChange({ learningStyle: opt.value })}
+                className={`p-3 rounded-xl border text-sm font-medium transition-all text-left ${
+                  data.learningStyle === opt.value
+                    ? "border-primary/60 bg-primary/8 text-primary"
+                    : "border-border bg-secondary/20 hover:bg-secondary/40 text-muted-foreground"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {!data.learningStyle && (
+            <p className="text-xs text-muted-foreground">
+              Поможет AI подобрать ресурсы в вашем формате
+            </p>
+          )}
         </div>
       </FormCard>
 

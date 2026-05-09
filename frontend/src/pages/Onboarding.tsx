@@ -62,7 +62,6 @@ const Onboarding = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<OnboardingFormData>(initialFormData);
   const [showRoadmap, setShowRoadmap] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [roadmapData, setRoadmapData] = useState<RoadmapData | null>(null);
   const [roadmapLoading, setRoadmapLoading] = useState(false);
@@ -124,11 +123,17 @@ const Onboarding = () => {
     setRoadmapLoading(true);
     setShowGenerating(true);
 
+    // Фильтруем незаполненные блоки расписания перед отправкой
+    const cleanedFormData = {
+      ...formData,
+      scheduleItems: formData.scheduleItems.filter((s) => s.activity.trim()),
+    };
+
     // Сохраняем форму в БД (fire-and-forget)
     fetch("/api/forms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
+      body: JSON.stringify(cleanedFormData),
     }).catch(() => {});
 
     // Генерируем роудмап через Groq
@@ -136,7 +141,7 @@ const Onboarding = () => {
       const res = await fetch("/api/roadmap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(cleanedFormData),
       });
       if (res.ok) {
         const data = await res.json();
@@ -341,12 +346,12 @@ const Onboarding = () => {
               <Button
                 variant="hero"
                 onClick={handleNext}
-                disabled={isSubmitting || (currentStep === steps.length - 1 && !formData.privacyAccepted)}
+                disabled={currentStep === steps.length - 1 && !formData.privacyAccepted}
               >
                 {currentStep === steps.length - 1 ? (
                   <>
                     <Sparkles className="w-4 h-4" />
-                    {isSubmitting ? "Сохраняем..." : "Создать карту"}
+                    Создать карту
                   </>
                 ) : (
                   <>

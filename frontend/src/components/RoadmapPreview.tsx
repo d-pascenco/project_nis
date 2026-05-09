@@ -43,6 +43,9 @@ interface FormSnapshot {
   needMentorship?: boolean;
   additionalInfo?: string;
   scheduleItems?: import("@/types").ScheduleItem[];
+  country?: string;
+  targetHardSkills?: string[];
+  targetSoftSkills?: string[];
 }
 
 interface RoadmapPreviewProps {

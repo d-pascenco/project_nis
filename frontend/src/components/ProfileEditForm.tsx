@@ -20,7 +20,7 @@ interface ProfileEditFormProps {
 }
 
 const DEFAULT: OnboardingFormData = {
-  fullName: "", age: "", location: "", currentStatus: "",
+  fullName: "", age: "", location: "", currentStatus: "", country: "",
   education: "", university: "", specialization: "",
   yearsExperience: "", currentRole: "", cvSummary: "",
   targetProfession: "", targetIndustry: "", timeline: "",
@@ -30,6 +30,7 @@ const DEFAULT: OnboardingFormData = {
   hoursPerWeek: 15, budget: "", healthConsiderations: "",
   preferOnline: true, preferRussian: true,
   needMentorship: false, additionalInfo: "",
+  scheduleItems: [], privacyAccepted: false,
 };
 
 const SECTIONS = ["О вас", "Образование", "Цели", "Навыки", "Ограничения", "Расписание"];
@@ -102,7 +103,7 @@ export const ProfileEditForm = ({ open, onClose, initialData, onRoadmapUpdated, 
     switch (activeSection) {
       case 0: return (
         <BasicInfoStep
-          data={{ fullName: formData.fullName, age: formData.age, location: formData.location, currentStatus: formData.currentStatus }}
+          data={{ fullName: formData.fullName, age: formData.age, location: formData.location, currentStatus: formData.currentStatus, country: formData.country || "" }}
           onChange={update}
         />
       );

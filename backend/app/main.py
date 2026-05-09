@@ -184,6 +184,7 @@ def _build_roadmap_prompt(
     target_hard_skills: list | None = None,
     target_soft_skills: list | None = None,
     soft_skills: list | None = None,
+    learning_style: str = "",
 ) -> str:
     schedule_hint = _hours_to_schedule(hours)
     schedule_section = ""
@@ -205,6 +206,7 @@ def _build_roadmap_prompt(
     if target_hard_str or target_soft_str:
         skills_block += f"\n- Hard skills (хочу освоить): {target_hard_str or 'не указаны'}\n- Soft skills (хочу освоить): {target_soft_str or 'не указаны'}\nПострой роудмап от текущих навыков к желаемым."
 
+
     return f"""Ты персональный карьерный коуч и лайф-менеджер. Твоя задача — составить ПОЛНЫЙ жизненный план {lang}.
 Клиент не должен ничего придумывать сам. Ты предусматриваешь всё: обучение, расписание дня, быт, сон, питание, тренировки, мотивацию, тайм-менеджмент.
 
@@ -215,6 +217,7 @@ def _build_roadmap_prompt(
 - Текущая роль: {current_role or "нет опыта"}
 - Доступных часов: {hours}ч/нед ({schedule_hint})
 - Бюджет: {budget or "без ограничений"}
+{f"- Стиль обучения: {learning_style}" if learning_style else ""}
 {skills_block}
 {schedule_section}
 
@@ -372,6 +375,7 @@ def generate_roadmap(form_data: UserFormCreate) -> dict:
         list(form_data.target_hard_skills),
         list(form_data.target_soft_skills),
         list(form_data.soft_skills),
+        form_data.learning_style or "",
     )
     return _call_groq(prompt, form_data.target_profession or "")
 
@@ -527,6 +531,7 @@ def recalculate_roadmap(
     target_hard       = fd.get("targetHardSkills") or fd.get("target_hard_skills") or []
     target_soft       = fd.get("targetSoftSkills") or fd.get("target_soft_skills") or []
     current_soft      = fd.get("softSkills") or fd.get("soft_skills") or []
+    learning_style    = fd.get("learningStyle") or fd.get("learning_style") or ""
     prompt = _build_roadmap_prompt(
         target_profession or "",
         target_industry or "",
@@ -540,6 +545,7 @@ def recalculate_roadmap(
         target_hard,
         target_soft,
         current_soft,
+        learning_style,
     )
     roadmap = _call_groq(prompt, target_profession or "")
     logger.info("Roadmap recalculated for user_id=%d stages=%d", user_id, len(roadmap.get("stages", [])))

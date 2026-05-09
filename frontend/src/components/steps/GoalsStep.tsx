@@ -162,9 +162,14 @@ export const GoalsStep = ({ data, onChange }: GoalsStepProps) => {
             id="motivation"
             placeholder="Что вас вдохновляет в этой профессии? Какую проблему хотите решать? Почему сейчас? Чем дольше расскажете — тем точнее будет план..."
             value={data.motivation}
-            onChange={(e) => onChange({ motivation: e.target.value })}
+            onChange={(e) => { if (e.target.value.length <= 1000) onChange({ motivation: e.target.value }); }}
             className="min-h-[110px] resize-none"
           />
+          {motivLen > 800 && (
+            <p className={`text-xs text-right tabular-nums ${motivLen >= 1000 ? "text-destructive" : "text-muted-foreground"}`}>
+              {motivLen} / 1000
+            </p>
+          )}
           {motivLen > 0 && motivLen < 50 && (
             <p className="text-xs text-amber-500">
               Напишите ещё {50 - motivLen} символов для более точного плана
