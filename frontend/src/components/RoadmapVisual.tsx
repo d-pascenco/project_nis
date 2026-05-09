@@ -6,7 +6,7 @@ import { PROFESSION_LABELS, getResourceUrl } from "@/lib/constants";
 import {
   X, ExternalLink, Clock, CheckCircle2, Target, User,
   ChevronDown, ChevronUp, GitBranch, BookOpen, Wrench,
-  Calendar, FolderOpen, ListChecks, Briefcase, Award,
+  Calendar, FolderOpen, ListChecks, Briefcase, Award, Sparkles,
 } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ const StageNode = ({
   isCurrent: boolean;
   isFirst: boolean;
 }) => {
-  const [tab, setTab] = useState<"overview" | "weeks" | "practice" | "resources">("overview");
+  const [tab, setTab] = useState<"overview" | "schedule" | "weeks" | "practice" | "resources" | "life">("overview");
   const [open, setOpen] = useState(isFirst || isCurrent);
 
   const tabStyle = (t: string) => ({
@@ -159,10 +159,12 @@ const StageNode = ({
           {/* Tabs */}
           <div style={{ display: "flex", gap: 4, marginBottom: 14, flexWrap: "wrap" }}>
             {[
-              { id: "overview", label: "Обзор" },
-              { id: "weeks", label: `По неделям${stage.weekly_plan ? ` (${stage.weekly_plan.length})` : ""}` },
-              { id: "practice", label: `Практика${stage.projects ? ` (${stage.projects.length})` : ""}` },
-              { id: "resources", label: `Ресурсы (${stage.resources.length})` },
+              { id: "overview", label: "📋 Обзор" },
+              { id: "schedule", label: "🗓 Расписание" },
+              { id: "weeks", label: `📅 Недели (${stage.weekly_plan?.length || 0})` },
+              { id: "practice", label: `🛠 Практика` },
+              { id: "resources", label: `📚 Ресурсы (${stage.resources.length})` },
+              { id: "life", label: "🌿 Жизнь" },
             ].map((t) => (
               <button key={t.id} style={tabStyle(t.id)} onClick={() => setTab(t.id as typeof tab)}>
                 {t.label}
@@ -323,6 +325,107 @@ const StageNode = ({
             </div>
           )}
 
+          {/* === SCHEDULE === */}
+          {tab === "schedule" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {stage.daily_schedule ? (
+                <>
+                  <div>
+                    <SectionLabel icon={Calendar} label="Утро" color={palette.text} />
+                    <div style={{ padding: "10px 14px", borderRadius: 10, background: `${palette.border}15`, border: `1px solid ${palette.border}33`, fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.6 }}>
+                      {stage.daily_schedule.morning}
+                    </div>
+                  </div>
+                  <div>
+                    <SectionLabel icon={Clock} label="Учебные блоки" color={palette.text} />
+                    {stage.daily_schedule.study_blocks.map((b, i) => (
+                      <div key={i} style={{ display: "flex", gap: 10, padding: "6px 12px", marginBottom: 6, borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", fontSize: 12, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>
+                        <span style={{ color: palette.text }}>⏱</span><span>{b}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <SectionLabel icon={Clock} label="Вечер и перерывы" color={palette.text} />
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.7 }}>
+                      <div>🌙 {stage.daily_schedule.evening}</div>
+                      <div style={{ marginTop: 6 }}>☕ {stage.daily_schedule.breaks}</div>
+                    </div>
+                  </div>
+                  {stage.daily_schedule.tip && (
+                    <div style={{ padding: "10px 14px", borderRadius: 10, background: `${palette.border}12`, border: `1px solid ${palette.border}33`, fontSize: 12, color: "rgba(255,255,255,0.65)", lineHeight: 1.6 }}>
+                      💡 {stage.daily_schedule.tip}
+                    </div>
+                  )}
+                  {stage.weekly_rhythm && (
+                    <div>
+                      <SectionLabel icon={Calendar} label="Ритм недели" color={palette.text} />
+                      {Object.entries(stage.weekly_rhythm).map(([day, plan]) => {
+                        const DAYS: Record<string, string> = { monday: "Пн", tuesday: "Вт", wednesday: "Ср", thursday: "Чт", friday: "Пт", saturday: "Сб", sunday: "Вс" };
+                        return (
+                          <div key={day} style={{ display: "flex", gap: 12, padding: "5px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: 12 }}>
+                            <span style={{ color: palette.text, fontWeight: 700, minWidth: 24 }}>{DAYS[day]}</span>
+                            <span style={{ color: "rgba(255,255,255,0.6)" }}>{plan}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "20px 0" }}>
+                  Обновите план чтобы получить детальное расписание
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* === LIFE === */}
+          {tab === "life" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {stage.lifestyle ? (
+                <>
+                  {[
+                    { icon: "😴", label: "Сон", text: stage.lifestyle.sleep },
+                    { icon: "🏃", label: "Тренировки", text: stage.lifestyle.exercise },
+                    { icon: "🥗", label: "Питание", text: stage.lifestyle.nutrition },
+                    { icon: "🧠", label: "Глубокая работа", text: stage.lifestyle.deep_work },
+                    { icon: "🔥", label: "Защита от выгорания", text: stage.lifestyle.no_burnout },
+                  ].map(({ icon, label, text }) => (
+                    <div key={label} style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>{icon} {label}</div>
+                      <p style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", margin: 0, lineHeight: 1.6 }}>{text}</p>
+                    </div>
+                  ))}
+                </>
+              ) : null}
+              {stage.motivation_tips && stage.motivation_tips.length > 0 && (
+                <div>
+                  <SectionLabel icon={Sparkles} label="Мотивация" color={palette.text} />
+                  {stage.motivation_tips.map((t, i) => (
+                    <div key={i} style={{ display: "flex", gap: 10, padding: "5px 0", fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
+                      <span style={{ color: palette.text }}>✦</span><span>{t}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {stage.common_mistakes && stage.common_mistakes.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                  <SectionLabel icon={Wrench} label="Частые ошибки" color="#e8855a" />
+                  {stage.common_mistakes.map((m, i) => (
+                    <div key={i} style={{ display: "flex", gap: 10, padding: "5px 0", fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>
+                      <span style={{ color: "#e8855a" }}>⚠</span><span>{m}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!stage.lifestyle && !stage.motivation_tips?.length && (
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "20px 0" }}>
+                  Обновите план чтобы получить лайфстайл-рекомендации
+                </p>
+              )}
+            </div>
+          )}
+
           {/* === RESOURCES === */}
           {tab === "resources" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -419,6 +522,25 @@ const GoalNode = ({ roadmapData, profession }: { roadmapData: RoadmapData; profe
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", margin: "12px 0 0", lineHeight: 1.6 }}>
             {roadmapData.summary}
           </p>
+        )}
+
+        {/* Life system */}
+        {roadmapData.life_system && (
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid rgba(192,98,62,0.2)" }}>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8 }}>Система жизни</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {Object.entries(roadmapData.life_system).map(([key, val]) => {
+                const icons: Record<string, string> = { time_management: "⏰", daily_ritual: "🌅", weekly_review: "📊", energy_management: "⚡", tracking: "📈" };
+                const names: Record<string, string> = { time_management: "Тайм-менеджмент", daily_ritual: "Ритуалы", weekly_review: "Ревью недели", energy_management: "Энергия", tracking: "Трекинг" };
+                return (
+                  <div key={key} style={{ padding: "10px 12px", borderRadius: 10, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginBottom: 4 }}>{icons[key] || "•"} {names[key] || key}</div>
+                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", margin: 0, lineHeight: 1.5 }}>{val}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Final goal details */}

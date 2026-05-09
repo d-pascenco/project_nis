@@ -23,6 +23,40 @@ export interface FinalGoal {
   portfolio: string[];
 }
 
+export interface DailySchedule {
+  morning: string;
+  study_blocks: string[];
+  evening: string;
+  breaks: string;
+  tip: string;
+}
+
+export interface WeeklyRhythm {
+  monday: string;
+  tuesday: string;
+  wednesday: string;
+  thursday: string;
+  friday: string;
+  saturday: string;
+  sunday: string;
+}
+
+export interface LifestyleGuide {
+  sleep: string;
+  exercise: string;
+  nutrition: string;
+  no_burnout: string;
+  deep_work: string;
+}
+
+export interface LifeSystem {
+  time_management: string;
+  daily_ritual: string;
+  weekly_review: string;
+  energy_management: string;
+  tracking: string;
+}
+
 export interface RoadmapStage {
   id: number;
   title: string;
@@ -30,13 +64,17 @@ export interface RoadmapStage {
   goal?: string;
   skills: string[];
   tools?: string[];
-  /** Ресурсы: строки (старый формат) или объекты (новый) */
   resources: string[] | RoadmapResource[];
   weekly_plan?: WeekPlan[];
   projects?: RoadmapProject[];
   deliverables?: string[];
   checkpoint?: string;
   job_relevance?: string;
+  daily_schedule?: DailySchedule;
+  weekly_rhythm?: WeeklyRhythm;
+  lifestyle?: LifestyleGuide;
+  motivation_tips?: string[];
+  common_mistakes?: string[];
 }
 
 export interface RoadmapData {
@@ -44,6 +82,7 @@ export interface RoadmapData {
   total_duration: string;
   summary: string;
   final_goal?: FinalGoal;
+  life_system?: LifeSystem;
 }
 
 export interface OnboardingFormData {

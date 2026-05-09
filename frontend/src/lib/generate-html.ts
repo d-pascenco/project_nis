@@ -107,10 +107,12 @@ function stageHTML(stage: RoadmapStage, idx: number, completed: boolean): string
 
       <!-- Tabs -->
       <div class="tabs">
-        <button class="tab active" style="--tc:${p.text};--tb:${p.border}" onclick="switchTab('${id}','overview',this)">Обзор</button>
-        <button class="tab" style="--tc:${p.text};--tb:${p.border}" onclick="switchTab('${id}','weeks',this)">По неделям (${stage.weekly_plan?.length || 0})</button>
-        <button class="tab" style="--tc:${p.text};--tb:${p.border}" onclick="switchTab('${id}','practice',this)">Практика</button>
-        <button class="tab" style="--tc:${p.text};--tb:${p.border}" onclick="switchTab('${id}','resources',this)">Ресурсы (${stage.resources.length})</button>
+        <button class="tab active" style="--tc:${p.text};--tb:${p.border}" onclick="switchTab('${id}','overview',this)">📋 Обзор</button>
+        <button class="tab" style="--tc:${p.text};--tb:${p.border}" onclick="switchTab('${id}','schedule',this)">🗓 Расписание</button>
+        <button class="tab" style="--tc:${p.text};--tb:${p.border}" onclick="switchTab('${id}','weeks',this)">📅 Недели (${stage.weekly_plan?.length || 0})</button>
+        <button class="tab" style="--tc:${p.text};--tb:${p.border}" onclick="switchTab('${id}','practice',this)">🛠 Практика</button>
+        <button class="tab" style="--tc:${p.text};--tb:${p.border}" onclick="switchTab('${id}','resources',this)">📚 Ресурсы (${stage.resources.length})</button>
+        <button class="tab" style="--tc:${p.text};--tb:${p.border}" onclick="switchTab('${id}','life',this)">🌿 Жизнь</button>
       </div>
 
       <!-- Overview -->
@@ -143,6 +145,74 @@ function stageHTML(stage: RoadmapStage, idx: number, completed: boolean): string
       <!-- Resources -->
       <div class="tab-pane" id="${id}-resources">
         <div class="resources-grid">${resourcesHTML}</div>
+      </div>
+
+      <!-- Schedule -->
+      <div class="tab-pane" id="${id}-schedule">
+        ${stage.daily_schedule ? `
+          <div class="section-label" style="color:${p.text}">УТРЕННИЙ БЛОК</div>
+          <div style="padding:10px 14px;border-radius:10px;background:${p.border}15;border:1px solid ${p.border}33;font-size:12px;color:rgba(255,255,255,0.7);line-height:1.6;margin-bottom:12px">
+            ☀️ ${esc(stage.daily_schedule.morning)}
+          </div>
+          <div class="section-label" style="color:${p.text}">УЧЕБНЫЕ БЛОКИ</div>
+          ${stage.daily_schedule.study_blocks.map((b) => `
+            <div style="display:flex;gap:10px;padding:6px 12px;margin-bottom:6px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);font-size:12px;color:rgba(255,255,255,0.7);line-height:1.5">
+              <span style="color:${p.text}">⏱</span><span>${esc(b)}</span>
+            </div>`).join("")}
+          <div class="section-label" style="color:${p.text};margin-top:12px">ВЕЧЕР И ПЕРЕРЫВЫ</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.6);line-height:1.8">
+            🌙 ${esc(stage.daily_schedule.evening)}<br>
+            ☕ ${esc(stage.daily_schedule.breaks)}
+          </div>
+          ${stage.daily_schedule.tip ? `
+            <div style="margin-top:12px;padding:10px 14px;border-radius:10px;background:${p.border}12;border:1px solid ${p.border}33;font-size:12px;color:rgba(255,255,255,0.65);line-height:1.6">
+              💡 ${esc(stage.daily_schedule.tip)}
+            </div>` : ""}
+          ${stage.weekly_rhythm ? `
+            <div class="section-label" style="color:${p.text};margin-top:16px">РИТМ НЕДЕЛИ</div>
+            ${Object.entries(stage.weekly_rhythm).map(([day, plan]) => {
+              const DAYS: Record<string, string> = { monday: "Пн", tuesday: "Вт", wednesday: "Ср", thursday: "Чт", friday: "Пт", saturday: "Сб", sunday: "Вс" };
+              return `<div style="display:flex;gap:12px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px">
+                <span style="color:${p.text};font-weight:700;min-width:24px">${DAYS[day] || day}</span>
+                <span style="color:rgba(255,255,255,0.6)">${esc(String(plan))}</span>
+              </div>`;
+            }).join("")}` : ""}
+        ` : "<p class='empty'>Обновите план чтобы получить детальное расписание</p>"}
+      </div>
+
+      <!-- Life -->
+      <div class="tab-pane" id="${id}-life">
+        ${stage.lifestyle ? `
+          ${[
+            { icon: "😴", key: "sleep", label: "СОН" },
+            { icon: "🏃", key: "exercise", label: "ТРЕНИРОВКИ" },
+            { icon: "🥗", key: "nutrition", label: "ПИТАНИЕ" },
+            { icon: "🧠", key: "deep_work", label: "ГЛУБОКАЯ РАБОТА" },
+            { icon: "🔥", key: "no_burnout", label: "ЗАЩИТА ОТ ВЫГОРАНИЯ" },
+          ].map(({ icon, key, label }) => {
+            const val = (stage.lifestyle as Record<string,string>)[key];
+            return val ? `
+              <div style="padding:12px 14px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);margin-bottom:8px">
+                <div style="font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">${icon} ${label}</div>
+                <p style="font-size:12px;color:rgba(255,255,255,0.65);margin:0;line-height:1.6">${esc(val)}</p>
+              </div>` : "";
+          }).join("")}
+        ` : ""}
+        ${stage.motivation_tips?.length ? `
+          <div class="section-label" style="color:${p.text}">МОТИВАЦИЯ</div>
+          ${stage.motivation_tips.map((t) => `
+            <div style="display:flex;gap:10px;padding:5px 0;font-size:12px;color:rgba(255,255,255,0.6);line-height:1.5">
+              <span style="color:${p.text}">✦</span><span>${esc(t)}</span>
+            </div>`).join("")}
+        ` : ""}
+        ${stage.common_mistakes?.length ? `
+          <div class="section-label" style="color:#e8855a;margin-top:12px">ЧАСТЫЕ ОШИБКИ</div>
+          ${stage.common_mistakes.map((m) => `
+            <div style="display:flex;gap:10px;padding:5px 0;font-size:12px;color:rgba(255,255,255,0.6);line-height:1.5">
+              <span style="color:#e8855a">⚠</span><span>${esc(m)}</span>
+            </div>`).join("")}
+        ` : ""}
+        ${!stage.lifestyle && !stage.motivation_tips?.length ? "<p class='empty'>Обновите план для лайфстайл-рекомендаций</p>" : ""}
       </div>
     </div>
   </div>`;
@@ -414,6 +484,22 @@ export function generateRoadmapHTML(opts: HTMLOptions): string {
       </div>` : ""}
     </div>` : ""}
   </div>
+
+  <!-- Life system block -->
+  ${roadmapData.life_system ? `
+  <div style="margin:12px 0 8px;padding:18px 20px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08)">
+    <div style="font-size:10px;color:rgba(255,255,255,0.25);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">🎯 Система жизни на весь путь</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      ${Object.entries(roadmapData.life_system).map(([key, val]) => {
+        const icons: Record<string, string> = { time_management: "⏰", daily_ritual: "🌅", weekly_review: "📊", energy_management: "⚡", tracking: "📈" };
+        const names: Record<string, string> = { time_management: "Тайм-менеджмент", daily_ritual: "Ритуалы дня", weekly_review: "Ревью недели", energy_management: "Управление энергией", tracking: "Трекинг прогресса" };
+        return `<div style="padding:10px 12px;border-radius:10px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.06)">
+          <div style="font-size:10px;color:rgba(255,255,255,0.25);margin-bottom:4px">${icons[key] || "•"} ${names[key] || key}</div>
+          <p style="font-size:11px;color:rgba(255,255,255,0.5);margin:0;line-height:1.5">${esc(String(val))}</p>
+        </div>`;
+      }).join("")}
+    </div>
+  </div>` : ""}
 
   <div class="connector"><div class="connector-line" style="background:rgba(192,98,62,0.4)"></div><div class="connector-arrow" style="border-top-color:rgba(192,98,62,0.4)"></div></div>
 
