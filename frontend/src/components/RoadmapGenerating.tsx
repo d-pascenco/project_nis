@@ -1,76 +1,39 @@
 /**
- * Экран генерации роудмапа.
- * Показывает анимированные шаги. Переход происходит когда:
- *   1. API ответил (isLoadingDone=true)
- *   2. Прошло минимальное время показа (MIN_MS)
- * Анимация — визуальное дополнение, не блокирует переход.
+ * Чисто визуальный компонент — играет анимацию шагов.
+ * Логика перехода к роудмапу управляется в Onboarding.tsx через useEffect.
+ * isLoadingDone используется только для ускорения анимации.
  */
 import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 
-const MIN_MS = 4000; // минимум показываем столько, даже если API быстрый
-
 const STEPS = [
-  { label: "Анализируем ваш профиль и цели",       icon: "🎯", ms: 900,  color: "#c0623e" },
-  { label: "Изучаем требования рынка труда",        icon: "📊", ms: 1100, color: "#6384c7" },
-  { label: "Подбираем курсы и ресурсы",             icon: "📚", ms: 1200, color: "#8263c7" },
+  { label: "Анализируем ваш профиль и цели",       icon: "🎯", ms: 800,  color: "#c0623e" },
+  { label: "Изучаем требования рынка труда",        icon: "📊", ms: 1000, color: "#6384c7" },
+  { label: "Подбираем курсы и ресурсы",             icon: "📚", ms: 1100, color: "#8263c7" },
   { label: "Проектируем учебный маршрут",           icon: "🗺️", ms: 900,  color: "#c7a328" },
-  { label: "Составляем план по неделям",            icon: "📅", ms: 1000, color: "#3ea262" },
-  { label: "Адаптируем под ваше расписание",        icon: "⏰", ms: 1000, color: "#c0623e" },
-  { label: "Настраиваем образ жизни и мотивацию",   icon: "🌿", ms: 800,  color: "#6384c7" },
-  { label: "Финальная персонализация плана",        icon: "✨", ms: 700,  color: "#8263c7" },
+  { label: "Составляем план по неделям",            icon: "📅", ms: 900,  color: "#3ea262" },
+  { label: "Адаптируем под ваше расписание",        icon: "⏰", ms: 900,  color: "#c0623e" },
+  { label: "Настраиваем образ жизни и мотивацию",   icon: "🌿", ms: 700,  color: "#6384c7" },
+  { label: "Финальная персонализация плана",        icon: "✨", ms: 600,  color: "#8263c7" },
 ];
 const TOTAL_MS = STEPS.reduce((s, st) => s + st.ms, 0);
 
 interface Props {
   targetProfession?: string;
-  isLoadingDone: boolean;
-  onDoneShown: () => void;
+  isLoadingDone: boolean;  // только для ускорения анимации
 }
 
-export const RoadmapGenerating = ({ targetProfession, isLoadingDone, onDoneShown }: Props) => {
+export const RoadmapGenerating = ({ targetProfession, isLoadingDone }: Props) => {
   const [stepProgress, setStepProgress] = useState<number[]>(STEPS.map(() => 0));
   const [activeStep, setActiveStep] = useState(0);
   const [overall, setOverall] = useState(0);
-  const [fading, setFading] = useState(false);
+  const apiDone = useRef(false);
 
-  // Ref чтобы не было stale closure в setTimeout
-  const onDoneRef = useRef(onDoneShown);
-  useEffect(() => { onDoneRef.current = onDoneShown; }, [onDoneShown]);
-
-  const mountTime = useRef(Date.now());
-  const exitScheduled = useRef(false);
-
-  // Функция выхода — вызываем ровно один раз
-  const scheduleExit = () => {
-    if (exitScheduled.current) return;
-    exitScheduled.current = true;
-    setOverall(100);
-    setFading(true);
-    setTimeout(() => {
-      onDoneRef.current();
-    }, 550);
-  };
-
-  // ── Реагируем на завершение API ──────────────────────────────────────────────
   useEffect(() => {
-    if (!isLoadingDone) return;
-
-    const elapsed = Date.now() - mountTime.current;
-    const waitMore = Math.max(0, MIN_MS - elapsed);
-
-    // После MIN_MS (или сразу если уже прошло) — добавляем 500мс и выходим
-    const t = setTimeout(() => scheduleExit(), waitMore + 500);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (isLoadingDone) apiDone.current = true;
   }, [isLoadingDone]);
 
-  // ── Анимация шагов (визуальная, не влияет на переход) ──────────────────────
-  const boostRef = useRef(false);
-  useEffect(() => {
-    if (isLoadingDone) boostRef.current = true;
-  }, [isLoadingDone]);
-
+  // Анимация
   useEffect(() => {
     const FPS = 30;
     const INTERVAL = 1000 / FPS;
@@ -79,12 +42,11 @@ export const RoadmapGenerating = ({ targetProfession, isLoadingDone, onDoneShown
     let total = 0;
 
     const tick = setInterval(() => {
-      const boost = boostRef.current && total / TOTAL_MS >= 0.6 ? 5 : 1;
+      const boost = (apiDone.current && total / TOTAL_MS >= 0.55) ? 5 : 1;
 
       if (cur < STEPS.length) {
-        const step = STEPS[cur];
-        elapsed[cur] = Math.min(elapsed[cur] + INTERVAL * boost, step.ms);
-        const pct = Math.round((elapsed[cur] / step.ms) * 100);
+        elapsed[cur] = Math.min(elapsed[cur] + INTERVAL * boost, STEPS[cur].ms);
+        const pct = Math.round((elapsed[cur] / STEPS[cur].ms) * 100);
 
         setStepProgress(prev => {
           const next = [...prev];
@@ -93,8 +55,7 @@ export const RoadmapGenerating = ({ targetProfession, isLoadingDone, onDoneShown
         });
 
         total = elapsed.reduce((s, e) => s + e, 0);
-        const ov = Math.min(Math.round((total / TOTAL_MS) * 100), 99);
-        setOverall(prev => (exitScheduled.current ? prev : ov));
+        setOverall(Math.min(Math.round((total / TOTAL_MS) * 100), 99));
 
         if (pct >= 100 && cur < STEPS.length - 1) {
           cur++;
@@ -102,6 +63,7 @@ export const RoadmapGenerating = ({ targetProfession, isLoadingDone, onDoneShown
         }
         if (pct >= 100 && cur === STEPS.length - 1) {
           clearInterval(tick);
+          setOverall(100);
         }
       }
     }, INTERVAL);
@@ -114,11 +76,7 @@ export const RoadmapGenerating = ({ targetProfession, isLoadingDone, onDoneShown
       position: "fixed", inset: 0, zIndex: 100,
       background: "radial-gradient(ellipse at 50% 30%, rgba(40,12,4,1) 0%, rgba(6,3,1,1) 70%)",
       display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
-      opacity: fading ? 0 : 1,
-      transition: "opacity 0.55s ease",
-      pointerEvents: fading ? "none" : "auto",
     }}>
-      {/* Ambient glow */}
       <div style={{ position: "absolute", top: "20%", left: "50%", transform: "translateX(-50%)", width: 600, height: 400, borderRadius: "50%", pointerEvents: "none", background: "radial-gradient(circle, rgba(192,98,62,0.12) 0%, transparent 65%)" }} />
 
       <div style={{ width: "100%", maxWidth: 520, position: "relative", zIndex: 1 }}>

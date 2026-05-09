@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { StepIndicator } from "@/components/StepIndicator";
@@ -67,6 +67,7 @@ const Onboarding = () => {
   const [roadmapData, setRoadmapData] = useState<RoadmapData | null>(null);
   const [roadmapLoading, setRoadmapLoading] = useState(false);
   const [showGenerating, setShowGenerating] = useState(false);
+  const generatingStart = useRef<number>(0);
 
   const updateFormData = (data: Partial<OnboardingFormData>) => {
     setFormData((prev) => ({ ...prev, ...data }));
@@ -103,19 +104,34 @@ const Onboarding = () => {
     }
   };
 
-  const submitForm = async () => {
-    setIsSubmitting(false);
-    setRoadmapLoading(true);
-    setShowGenerating(true);  // показываем экран генерации
+  // ── Переход к роудмапу — управляется здесь, не внутри RoadmapGenerating ──────
+  // Когда API завершён, ждём MIN_MS с момента старта генерации, потом показываем роудмап
+  useEffect(() => {
+    if (!showGenerating || roadmapLoading) return;         // ещё не готово
+    const elapsed = Date.now() - generatingStart.current;
+    const MIN_MS = 4500;
+    const wait = Math.max(0, MIN_MS - elapsed) + 500;     // мин. 4.5с + fade 0.5с
 
-    // сохраняем форму в БД (не блокируем UI)
+    const t = setTimeout(() => {
+      setShowGenerating(false);
+      setShowRoadmap(true);
+    }, wait);
+    return () => clearTimeout(t);
+  }, [showGenerating, roadmapLoading]);
+
+  const submitForm = async () => {
+    generatingStart.current = Date.now();
+    setRoadmapLoading(true);
+    setShowGenerating(true);
+
+    // Сохраняем форму в БД (fire-and-forget)
     fetch("/api/forms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formData),
     }).catch(() => {});
 
-    // генерируем роудмап через Groq
+    // Генерируем роудмап через Groq
     try {
       const res = await fetch("/api/roadmap", {
         method: "POST",
@@ -127,9 +143,9 @@ const Onboarding = () => {
         setRoadmapData(data);
       }
     } catch {
-      // fallback: static roadmap shown
+      // При ошибке API — покажем статичный fallback-роудмап
     } finally {
-      setRoadmapLoading(false);
+      setRoadmapLoading(false);  // useEffect выше увидит это и запланирует переход
     }
   };
 
@@ -268,10 +284,6 @@ const Onboarding = () => {
             }[formData.targetProfession] || formData.targetProfession
           }
           isLoadingDone={!roadmapLoading}
-          onDoneShown={() => {
-            setShowGenerating(false);
-            setShowRoadmap(true);
-          }}
         />
       )}
 
