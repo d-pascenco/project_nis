@@ -258,9 +258,9 @@ export const RoadmapPreview = ({
   const timeline = TIMELINE_LABELS[userData.timeline] || roadmapData?.total_duration || "6 месяцев";
 
   const handleDownload = () => {
-    if (!roadmapData) return;
+    // Используем stages — уже содержит FALLBACK_STAGES если roadmapData null
     try {
-      const stagesHtml = (roadmapData.stages || []).map((s, i) => {
+      const stagesHtml = stages.map((s, i) => {
         const resources = (s.resources || [])
           .map((r) => (typeof r === "string" ? r : (r as { name: string }).name))
           .join(", ");
@@ -304,13 +304,13 @@ export const RoadmapPreview = ({
   <div style="text-align:right;font-size:11px;color:#555">${new Date().toLocaleDateString("ru-RU")}<br>nextpath.su</div>
 </div>
 <h1 style="margin:0 0 6px;font-size:24px">${profession}</h1>
-${roadmapData.total_duration ? `<p style="color:#e8855a;margin:0 0 16px">⏱ ${roadmapData.total_duration}</p>` : ""}
-${roadmapData.summary ? `<p style="color:#888;line-height:1.6;margin:0 0 24px;font-size:14px">${roadmapData.summary}</p>` : ""}
+${roadmapData?.total_duration ? `<p style="color:#e8855a;margin:0 0 16px">⏱ ${roadmapData.total_duration}</p>` : ""}
+${roadmapData?.summary ? `<p style="color:#888;line-height:1.6;margin:0 0 24px;font-size:14px">${roadmapData.summary}</p>` : ""}
 ${stagesHtml}
-${roadmapData.final_goal?.requirements?.length ? `
+${roadmapData?.final_goal?.requirements?.length ? `
 <div style="margin-top:24px;padding:20px;border:1.5px solid rgba(192,98,62,0.5);border-radius:12px;background:rgba(192,98,62,0.08)">
   <h2 style="margin:0 0 12px;color:#e8855a;font-size:16px">Требования работодателей</h2>
-  ${roadmapData.final_goal.requirements.map((r) => `<div style="display:flex;gap:8px;margin:4px 0;font-size:13px;color:#ccc">▸ ${r}</div>`).join("")}
+  ${(roadmapData.final_goal?.requirements || []).map((r) => `<div style="display:flex;gap:8px;margin:4px 0;font-size:13px;color:#ccc">▸ ${r}</div>`).join("")}
 </div>` : ""}
 <div style="margin-top:32px;padding-top:16px;border-top:1px solid #1a1a1a;display:flex;justify-content:space-between;font-size:11px;color:#444">
   <span>NextPath — AI-система персонального карьерного сопровождения</span>
@@ -328,35 +328,65 @@ ${roadmapData.final_goal?.requirements?.length ? `
       a.click();
       document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setShareMsg("Файл скачан!");
+      setTimeout(() => setShareMsg(null), 2500);
     } catch (err) {
       console.error("[download]", err);
+      setShareMsg("Ошибка скачивания — проверьте консоль");
+      setTimeout(() => setShareMsg(null), 3000);
     }
   };
 
   const handleShare = async () => {
-    if (!roadmapData) return;
+    if (!roadmapData) {
+      // Нет данных роудмапа — копируем ссылку на сайт
+      try {
+        await navigator.clipboard.writeText("https://nextpath.su");
+        setShareMsg("Ссылка на NextPath скопирована!");
+      } catch {
+        setShareMsg("Не удалось скопировать ссылку");
+      }
+      setTimeout(() => setShareMsg(null), 3000);
+      return;
+    }
+
     setShareMsg("Создаём ссылку...");
     try {
-      // Создаём уникальную публичную ссылку через бэкенд
       const res = await fetch("/api/share", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roadmap: roadmapData }),
       });
-      if (!res.ok) throw new Error("server error");
-      const { id } = await res.json();
-      const shareUrl = `${window.location.origin}/shared/${id}`;
+
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.detail || `HTTP ${res.status}`);
+      }
+
+      const body = await res.json();
+      const shareId = body.id;
+      if (!shareId) throw new Error("no id in response");
+
+      const shareUrl = `${window.location.origin}/shared/${shareId}`;
 
       if (navigator.share) {
         await navigator.share({ title: "Мой план развития — NextPath", url: shareUrl });
+        setShareMsg(null);
       } else {
         await navigator.clipboard.writeText(shareUrl);
         setShareMsg("Ссылка скопирована!");
-        setTimeout(() => setShareMsg(null), 3000);
+        setTimeout(() => setShareMsg(null), 3500);
       }
-    } catch {
-      setShareMsg("Ошибка — попробуйте ещё раз");
-      setTimeout(() => setShareMsg(null), 2500);
+    } catch (err) {
+      console.error("[share]", err);
+      // Fallback — копируем текущий URL
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        setShareMsg("Скопирована ссылка на страницу");
+      } catch {
+        setShareMsg("Не удалось скопировать ссылку");
+      }
+      setTimeout(() => setShareMsg(null), 3000);
     }
   };
 
@@ -525,23 +555,29 @@ ${roadmapData.final_goal?.requirements?.length ? `
 
         {/* Action buttons */}
         {!hideActions && !isLoading && (
-          <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
-            {roadmapData && (
-              <Button
-                variant="hero"
-                size="lg"
-                onClick={() => setVisualOpen(true)}
-                className="bg-gradient-to-r from-primary to-primary/80 shadow-lg"
-              >
-                <GitBranch className="w-4 h-4" /> Карта развития
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center flex-wrap">
+              {roadmapData && (
+                <Button
+                  variant="hero"
+                  size="lg"
+                  onClick={() => setVisualOpen(true)}
+                  className="bg-gradient-to-r from-primary to-primary/80 shadow-lg"
+                >
+                  <GitBranch className="w-4 h-4" /> Карта развития
+                </Button>
+              )}
+              <Button variant="outline" size="lg" onClick={handleDownload}>
+                <Download className="w-4 h-4" /> Скачать план
               </Button>
+              <Button variant="outline" size="lg" onClick={handleShare}>
+                <Share2 className="w-4 h-4" /> Поделиться
+              </Button>
+            </div>
+            {/* Уведомление для обеих кнопок */}
+            {shareMsg && (
+              <p className="text-center text-sm text-primary animate-pulse">{shareMsg}</p>
             )}
-            <Button variant="outline" size="lg" onClick={handleDownload}>
-              <Download className="w-4 h-4" /> Скачать план
-            </Button>
-            <Button variant="outline" size="lg" onClick={handleShare}>
-              <Share2 className="w-4 h-4" /> {shareMsg || "Поделиться"}
-            </Button>
           </div>
         )}
 
