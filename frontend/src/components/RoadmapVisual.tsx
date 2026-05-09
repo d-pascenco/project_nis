@@ -581,14 +581,17 @@ const GoalNode = ({ roadmapData, profession }: { roadmapData: RoadmapData; profe
 
 // ── Start node ────────────────────────────────────────────────────────────────
 
-const StartNode = ({ userName, currentRole, skills }: {
-  userName: string; currentRole?: string; skills?: string[];
+const StartNode = ({ userName, currentRole, skills, scheduleItems }: {
+  userName: string;
+  currentRole?: string;
+  skills?: string[];
+  scheduleItems?: import("@/types").ScheduleItem[];
 }) => (
   <div style={{
     borderRadius: 16, padding: 20,
     background: "rgba(255,255,255,0.03)", border: "1.5px solid rgba(255,255,255,0.1)",
   }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: skills?.length ? 12 : 0 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 12 }}>
       <div style={{
         width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
         background: "rgba(255,255,255,0.06)", border: "2px solid rgba(255,255,255,0.15)",
@@ -605,8 +608,9 @@ const StartNode = ({ userName, currentRole, skills }: {
         </div>
       </div>
     </div>
+
     {skills && skills.length > 0 && (
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: scheduleItems?.length ? 12 : 0 }}>
         {skills.slice(0, 6).map((s) => (
           <span key={s} style={{
             fontSize: 11, padding: "2px 8px", borderRadius: 20,
@@ -617,6 +621,30 @@ const StartNode = ({ userName, currentRole, skills }: {
         {skills.length > 6 && (
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>+{skills.length - 6}</span>
         )}
+      </div>
+    )}
+
+    {scheduleItems && scheduleItems.length > 0 && (
+      <div>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8 }}>
+          📅 Текущая занятость
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {scheduleItems.map((item) => (
+            <div key={item.id} style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "5px 10px", borderRadius: 8,
+              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)",
+              fontSize: 12,
+            }}>
+              <span style={{ color: "rgba(255,255,255,0.6)", flex: 1 }}>{item.activity}</span>
+              <span style={{ color: "rgba(255,255,255,0.35)", fontVariantNumeric: "tabular-nums" }}>
+                {item.from}–{item.to}
+              </span>
+              <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 10 }}>{item.days}</span>
+            </div>
+          ))}
+        </div>
       </div>
     )}
   </div>
@@ -630,6 +658,7 @@ interface RoadmapVisualProps {
   targetProfession: string;
   currentRole?: string;
   technicalSkills?: string[];
+  scheduleItems?: import("@/types").ScheduleItem[];
   completedStages?: number[];
   open: boolean;
   onClose: () => void;
@@ -637,7 +666,7 @@ interface RoadmapVisualProps {
 
 export const RoadmapVisual = ({
   roadmapData, userName, targetProfession, currentRole,
-  technicalSkills, completedStages = [], open, onClose,
+  technicalSkills, scheduleItems, completedStages = [], open, onClose,
 }: RoadmapVisualProps) => {
   const profession = PROFESSION_LABELS[targetProfession] || targetProfession || "Цель";
   const stages = [...roadmapData.stages];
@@ -713,7 +742,12 @@ export const RoadmapVisual = ({
             })}
 
             <Connector color="rgba(255,255,255,0.12)" />
-            <StartNode userName={userName} currentRole={currentRole} skills={technicalSkills} />
+            <StartNode
+              userName={userName}
+              currentRole={currentRole}
+              skills={technicalSkills}
+              scheduleItems={scheduleItems}
+            />
 
             <p style={{ textAlign: "center", fontSize: 11, color: "rgba(255,255,255,0.15)", marginTop: 24 }}>
               Нажмите на этап чтобы открыть детальный план · Переключайте вкладки внутри

@@ -227,10 +227,11 @@ interface HTMLOptions {
   currentRole?: string;
   technicalSkills?: string[];
   completedStages?: number[];
+  scheduleItems?: Array<{ id: string; activity: string; from: string; to: string; days: string }>;
 }
 
 export function generateRoadmapHTML(opts: HTMLOptions): string {
-  const { roadmapData, userName, targetProfession, currentRole, technicalSkills, completedStages = [] } = opts;
+  const { roadmapData, userName, targetProfession, currentRole, technicalSkills, completedStages = [], scheduleItems } = opts;
   const profession = PROFESSION_LABELS[targetProfession] || targetProfession || "Цель";
   const fg = roadmapData.final_goal;
   const date = new Date().toLocaleDateString("ru-RU");
@@ -509,15 +510,31 @@ export function generateRoadmapHTML(opts: HTMLOptions): string {
   <div class="connector"><div class="connector-line" style="background:rgba(255,255,255,0.1)"></div><div class="connector-arrow" style="border-top-color:rgba(255,255,255,0.1)"></div></div>
 
   <!-- User start node -->
-  <div class="user-node">
-    <div class="user-avatar">👤</div>
-    <div>
-      <div class="user-name">${esc(userName || "Вы сейчас")}</div>
-      <div class="user-sub">${esc(currentRole || "Текущий уровень")}
-        ${skillsUserHTML ? `<span style="color:rgba(255,255,255,0.2)"> · </span>${skillsUserHTML}` : ""}
+  <div class="user-node" style="flex-direction:column;align-items:flex-start;gap:12px">
+    <div style="display:flex;align-items:center;gap:16px;width:100%">
+      <div class="user-avatar">👤</div>
+      <div style="flex:1">
+        <div class="user-name">${esc(userName || "Вы сейчас")}</div>
+        <div class="user-sub">${esc(currentRole || "Текущий уровень")}
+          ${skillsUserHTML ? `<span style="color:rgba(255,255,255,0.2)"> · </span>${skillsUserHTML}` : ""}
+        </div>
       </div>
+      <div class="user-tag">Старт</div>
     </div>
-    <div class="user-tag">Старт</div>
+    ${scheduleItems && scheduleItems.length > 0 ? `
+    <div style="width:100%">
+      <div style="font-size:10px;color:rgba(255,255,255,0.25);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">
+        📅 Текущая занятость
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:6px">
+        ${scheduleItems.map((item) => `
+          <div style="display:flex;align-items:center;gap:10px;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);font-size:12px">
+            <span style="color:rgba(255,255,255,0.65);flex:1">${esc(item.activity)}</span>
+            <span style="color:rgba(255,255,255,0.35);font-variant-numeric:tabular-nums">${esc(item.from)}–${esc(item.to)}</span>
+            <span style="color:rgba(255,255,255,0.2);font-size:10px">${esc(item.days)}</span>
+          </div>`).join("")}
+      </div>
+    </div>` : ""}
   </div>
 
   <!-- Footer -->

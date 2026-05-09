@@ -117,14 +117,16 @@ export const ScheduleStep = ({ data, onChange }: ScheduleStepProps) => {
                     type="time"
                     value={item.from}
                     onChange={(e) => update(item.id, "from", e.target.value)}
-                    className="h-9 w-24 text-center"
+                    className="h-9"
+                    style={{ minWidth: 130 }}
                   />
-                  <span className="text-muted-foreground text-sm">—</span>
+                  <span className="text-muted-foreground text-sm shrink-0">—</span>
                   <Input
                     type="time"
                     value={item.to}
                     onChange={(e) => update(item.id, "to", e.target.value)}
-                    className="h-9 w-24 text-center"
+                    className="h-9"
+                    style={{ minWidth: 130 }}
                   />
                 </div>
 

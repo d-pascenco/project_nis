@@ -41,6 +41,7 @@ interface FormSnapshot {
   preferRussian?: boolean;
   needMentorship?: boolean;
   additionalInfo?: string;
+  scheduleItems?: import("@/types").ScheduleItem[];
 }
 
 interface RoadmapPreviewProps {
@@ -265,6 +266,7 @@ export const RoadmapPreview = ({
         targetProfession: userData.targetProfession,
         currentRole: formSnapshot?.currentRole,
         technicalSkills: formSnapshot?.technicalSkills,
+        scheduleItems: formSnapshot?.scheduleItems,
       });
     });
   };
@@ -533,6 +535,7 @@ export const RoadmapPreview = ({
           targetProfession={userData.targetProfession}
           currentRole={formSnapshot?.currentRole}
           technicalSkills={formSnapshot?.technicalSkills}
+          scheduleItems={formSnapshot?.scheduleItems}
         />
       )}
     </>

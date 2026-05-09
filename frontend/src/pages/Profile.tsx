@@ -35,6 +35,7 @@ const downloadProfileHTML = (userData: UserData) => {
       targetProfession: userData.form_data?.targetProfession || "",
       currentRole: userData.form_data?.currentRole,
       technicalSkills: userData.form_data?.technicalSkills,
+      scheduleItems: userData.form_data?.scheduleItems,
     });
   });
 };
@@ -559,6 +560,7 @@ const Profile = () => {
           targetProfession={userData.form_data?.targetProfession || ""}
           currentRole={userData.form_data?.currentRole || ""}
           technicalSkills={userData.form_data?.technicalSkills}
+          scheduleItems={userData.form_data?.scheduleItems}
           completedStages={completedStages}
         />
       )}
