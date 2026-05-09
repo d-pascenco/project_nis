@@ -331,14 +331,9 @@ export const RoadmapPreview = ({
       }
     } catch (err) {
       console.error("[share]", err);
-      // Fallback — копируем текущий URL
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        setShareMsg("Скопирована ссылка на страницу");
-      } catch {
-        setShareMsg("Не удалось скопировать ссылку");
-      }
-      setTimeout(() => setShareMsg(null), 3000);
+      const msg = err instanceof Error ? err.message : String(err);
+      setShareMsg(`Ошибка: ${msg}`);
+      setTimeout(() => setShareMsg(null), 5000);
     }
   };
 
