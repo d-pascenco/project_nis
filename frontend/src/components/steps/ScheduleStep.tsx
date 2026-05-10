@@ -101,57 +101,60 @@ export const ScheduleStep = ({ data, onChange }: ScheduleStepProps) => {
             {items.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-2 p-3 rounded-xl border border-border bg-secondary/20"
+                className="p-3 rounded-xl border border-border bg-secondary/20 space-y-2"
               >
-                {/* Activity name */}
-                <Input
-                  placeholder="Чем заняты..."
-                  value={item.activity}
-                  onChange={(e) => update(item.id, "activity", e.target.value)}
-                  className={`h-9 flex-1 min-w-0 ${!item.activity.trim() ? "border-destructive/50" : ""}`}
-                />
-
-                {/* Time range */}
-                <div className="flex items-center gap-1.5 shrink-0">
+                {/* Row 1: название + кнопка удаления */}
+                <div className="flex items-center gap-2">
                   <Input
-                    type="time"
-                    value={item.from}
-                    onChange={(e) => update(item.id, "from", e.target.value)}
-                    className="h-9"
-                    style={{ minWidth: 130 }}
+                    placeholder="Название активности (Работа, Сон, Тренировка...)"
+                    value={item.activity}
+                    onChange={(e) => update(item.id, "activity", e.target.value)}
+                    className={`h-9 flex-1 ${!item.activity.trim() ? "border-destructive/50" : ""}`}
                   />
-                  <span className="text-muted-foreground text-sm shrink-0">—</span>
-                  <Input
-                    type="time"
-                    value={item.to}
-                    onChange={(e) => update(item.id, "to", e.target.value)}
-                    className="h-9"
-                    style={{ minWidth: 130 }}
-                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => remove(item.id)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
                 </div>
 
-                {/* Days */}
-                <Select value={item.days} onValueChange={(v) => update(item.id, "days", v)}>
-                  <SelectTrigger className="h-9 w-32 shrink-0">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DAYS_OPTIONS.map((d) => (
-                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {/* Row 2: время + дни */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Time range */}
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      type="time"
+                      value={item.from}
+                      onChange={(e) => update(item.id, "from", e.target.value)}
+                      className="h-8 text-sm"
+                      style={{ minWidth: 120 }}
+                    />
+                    <span className="text-muted-foreground text-sm">—</span>
+                    <Input
+                      type="time"
+                      value={item.to}
+                      onChange={(e) => update(item.id, "to", e.target.value)}
+                      className="h-8 text-sm"
+                      style={{ minWidth: 120 }}
+                    />
+                  </div>
 
-                {/* Remove */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => remove(item.id)}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
+                  {/* Days */}
+                  <Select value={item.days} onValueChange={(v) => update(item.id, "days", v)}>
+                    <SelectTrigger className="h-8 w-36 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DAYS_OPTIONS.map((d) => (
+                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             ))}
           </div>
