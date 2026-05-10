@@ -51,7 +51,8 @@ const PLATFORM_URLS: Record<string, string> = {
   Codecademy: "https://www.codecademy.com",
 };
 
-export const getResourceUrl = (name: string): string => {
+export const getResourceUrl = (name: unknown): string => {
+  if (!name || typeof name !== "string") return "#";
   for (const [key, url] of Object.entries(PLATFORM_URLS)) {
     if (name.toLowerCase().includes(key.toLowerCase())) return url;
   }

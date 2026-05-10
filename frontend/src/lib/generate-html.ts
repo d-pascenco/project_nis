@@ -22,11 +22,11 @@ const RESOURCE_ICON: Record<string, string> = {
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-const isObj = (r: string | RoadmapResource): r is RoadmapResource => typeof r === "object";
-const resName = (r: string | RoadmapResource) => isObj(r) ? r.name : r;
-const resMeta = (r: string | RoadmapResource) => isObj(r) ? [r.platform, r.time].filter(Boolean).join(" · ") : "";
-const resIcon = (r: string | RoadmapResource) => isObj(r) ? (RESOURCE_ICON[r.type] || "🔗") : "🔗";
-const resUrl  = (r: string | RoadmapResource) => isObj(r) ? getResourceUrl(r.platform || r.name) : getResourceUrl(r);
+const isObj = (r: unknown): r is RoadmapResource => typeof r === "object" && r !== null;
+const resName = (r: unknown) => isObj(r) ? ((r as RoadmapResource).name || "—") : (typeof r === "string" ? r : "—");
+const resMeta = (r: unknown) => isObj(r) ? [(r as RoadmapResource).platform, (r as RoadmapResource).time].filter(Boolean).join(" · ") : "";
+const resIcon = (r: unknown) => isObj(r) ? (RESOURCE_ICON[(r as RoadmapResource).type] || "🔗") : "🔗";
+const resUrl  = (r: unknown) => isObj(r) ? getResourceUrl((r as RoadmapResource).platform || (r as RoadmapResource).name || "") : getResourceUrl(typeof r === "string" ? r : "");
 
 // ── Stage HTML ────────────────────────────────────────────────────────────────
 
@@ -70,7 +70,7 @@ function stageHTML(stage: RoadmapStage, idx: number, completed: boolean): string
     `<div class="deliverable"><span style="color:${p.text}">✓</span><span>${esc(d)}</span></div>`
   ).join("") || "";
 
-  const resourcesHTML = stage.resources.map((r) => `
+  const resourcesHTML = (stage.resources || []).filter(Boolean).map((r) => `
     <a href="${resUrl(r)}" target="_blank" rel="noopener noreferrer" class="resource-link">
       <span class="resource-icon">${resIcon(r)}</span>
       <div class="resource-info">

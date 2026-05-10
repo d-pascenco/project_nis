@@ -11,14 +11,20 @@ import {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const isResourceObj = (r: string | RoadmapResource): r is RoadmapResource =>
+const isResourceObj = (r: unknown): r is RoadmapResource =>
   typeof r === "object" && r !== null;
 
-const resourceUrl = (r: string | RoadmapResource): string =>
-  isResourceObj(r) ? getResourceUrl(r.platform || r.name) : getResourceUrl(r);
+const resourceUrl = (r: unknown): string => {
+  if (!r) return "#";
+  if (isResourceObj(r)) return getResourceUrl((r as RoadmapResource).platform || (r as RoadmapResource).name || "");
+  return getResourceUrl(typeof r === "string" ? r : "");
+};
 
-const resourceName = (r: string | RoadmapResource): string =>
-  isResourceObj(r) ? r.name : r;
+const resourceName = (r: unknown): string => {
+  if (!r) return "—";
+  if (isResourceObj(r)) return (r as RoadmapResource).name || "—";
+  return typeof r === "string" ? r : "—";
+};
 
 const resourceMeta = (r: string | RoadmapResource): string | null =>
   isResourceObj(r) ? [r.platform, r.type !== "article" ? r.time : null].filter(Boolean).join(" · ") : null;
@@ -429,7 +435,7 @@ const StageNode = ({
           {/* === RESOURCES === */}
           {tab === "resources" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {stage.resources.map((r, i) => {
+              {(stage.resources || []).filter(Boolean).map((r, i) => {
                 const name = resourceName(r);
                 const url = resourceUrl(r);
                 const meta = resourceMeta(r);

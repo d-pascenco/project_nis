@@ -467,10 +467,10 @@ export const RoadmapPreview = ({
                     <div className="mb-4">
                       <div className="text-xs text-muted-foreground mb-1.5">Ресурсы:</div>
                       <div className="flex flex-wrap gap-1.5">
-                        {stage.resources.map((r) => (
-                          <a key={r} href={getResourceUrl(r)} target="_blank" rel="noopener noreferrer">
+                        {(stage.resources || []).filter(Boolean).map((r) => (
+                          <a key={String(r)} href={getResourceUrl(typeof r === "string" ? r : (r as {name?:string}).name || "")} target="_blank" rel="noopener noreferrer">
                             <Badge variant="outline" className="text-xs gap-1 hover:border-primary hover:text-primary transition-colors cursor-pointer">
-                              {r} <ExternalLink className="w-2.5 h-2.5" />
+                              {typeof r === "string" ? r : (r as {name?:string}).name || "—"} <ExternalLink className="w-2.5 h-2.5" />
                             </Badge>
                           </a>
                         ))}
@@ -575,13 +575,16 @@ export const RoadmapPreview = ({
             <DialogTitle>Ресурсы для старта</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            {stages.find((s) => s.id === showResources)?.resources.map((r) => (
-              <a key={r} href={getResourceUrl(r)} target="_blank" rel="noopener noreferrer"
-                className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group">
-                <span className="font-medium text-sm">{r}</span>
-                <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
-              </a>
-            ))}
+            {(stages.find((s) => s.id === showResources)?.resources || []).filter(Boolean).map((r, i) => {
+              const name = typeof r === "string" ? r : (r as {name?:string}).name || "—";
+              return (
+                <a key={i} href={getResourceUrl(name)} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3 rounded-lg border border-border hover:border-primary hover:bg-primary/5 transition-all group">
+                  <span className="font-medium text-sm">{name}</span>
+                  <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
+                </a>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>
