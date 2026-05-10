@@ -1,60 +1,59 @@
 # NextPath Frontend
 
-React-приложение NextPath. Обслуживает два домена из одного бандла:
+React-приложение, обслуживающее два домена из одного бандла:
 
-- **nextpath.su** — публичный лендинг + 5-шаговая онбординг-форма + просмотр роудмапа
-- **my.nextpath.su** — личный кабинет (профиль, прогресс, визуальный граф)
+- **nextpath.su** — лендинг, форма онбординга, просмотр роудмапа
+- **my.nextpath.su** — личный кабинет авторизованного пользователя
 
 ## Стек
 
-React 18 · TypeScript · Vite · Tailwind CSS · shadcn/ui · react-router-dom · @react-oauth/google · html2canvas · jspdf
+React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui, react-router-dom, @react-oauth/google
 
 ## Разработка
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173
+npm run dev   # http://localhost:5173
 ```
 
-В dev-режиме оба домена работают на одном `localhost:5173` — домен-разделение отключено.
+В режиме разработки оба домена работают на одном `localhost:5173` — разделение по домену отключено.
 
 ## Сборка
 
 ```bash
 NODE_OPTIONS="--max-old-space-size=512" npm run build
-# dist/ → /var/www/html/
+# результат: dist/ → /var/www/html/
 ```
 
 ## Структура `src/`
 
 ```
-pages/
-  Index.tsx           — лендинг nextpath.su
-  Onboarding.tsx      — 5-шаговая форма + показ роудмапа
-  Profile.tsx         — личный кабинет my.nextpath.su
-
-components/
-  RoadmapPreview.tsx  — карточки роудмапа + PDF + Share
-  RoadmapVisual.tsx   — fullscreen граф роудмапа (dark modal)
-  ProfileEditForm.tsx — редактирование профиля в кабинете
-  Autocomplete.tsx    — поле с подсказками (города, вузы, специальности)
-  Logo.tsx            — логотип-ссылка на /
-  steps/              — 5 шагов онбординга (BasicInfo, Education, Goals, Skills, Constraints)
-  ui/                 — компоненты shadcn/ui
-
+types.ts              — общие типы (RoadmapData, OnboardingFormData, ScheduleItem...)
 lib/
-  auth.ts             — JWT в localStorage (getToken, setToken, authHeaders)
+  auth.ts             — хранение JWT в localStorage
   urls.ts             — логика доменов (IS_CABINET_DOMAIN, goToCabinet)
-  constants.ts        — PROFESSION_LABELS, TIMELINE_LABELS, STAGE_COLORS, getResourceUrl
-  suggestions.ts      — данные для Autocomplete (CITIES, UNIVERSITIES, SPECIALIZATIONS, LANGUAGES)
-
-types.ts              — RoadmapData, RoadmapStage, OnboardingFormData
-App.tsx               — домен-aware роутинг (CabinetRoutes / MainRoutes)
+  constants.ts        — справочники, маппинг платформ, getResourceUrl
+  suggestions.ts      — города по странам, университеты, профессии, языки
+  generate-html.ts    — генератор интерактивного HTML-файла для скачивания
+components/
+  RoadmapPreview.tsx  — карточки роудмапа, скачивание, шаринг
+  RoadmapVisual.tsx   — полноэкранный граф роудмапа
+  RoadmapGenerating.tsx — экран загрузки при генерации
+  ProfileEditForm.tsx — форма редактирования профиля в кабинете
+  Autocomplete.tsx    — поле ввода с подсказками
+  ErrorBoundary.tsx   — обработчик ошибок рендера
+  steps/              — 6 шагов онбординга
+pages/
+  Index.tsx           — лендинг (nextpath.su)
+  Onboarding.tsx      — форма и роудмап (nextpath.su)
+  Profile.tsx         — личный кабинет (my.nextpath.su)
+  Shared.tsx          — публичная страница роудмапа (/shared/:id)
+App.tsx               — роутинг с учётом домена
 ```
 
 ## Переменные окружения (Vite)
 
-Задаются в корневом `.env` с префиксом `VITE_` — Vite запекает их в бандл при сборке.
+Задаются в корневом `.env` с префиксом `VITE_` — бакунтируются в бандл при сборке.
 
 | Переменная | Значение в prod |
 |------------|----------------|

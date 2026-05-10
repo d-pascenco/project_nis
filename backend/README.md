@@ -1,27 +1,27 @@
 # NextPath Backend
 
-FastAPI-сервис для NextPath. Принимает данные онбординг-формы, сохраняет их в PostgreSQL, генерирует персональный роудмап через Groq (Llama 3.3), управляет пользователями через Google OAuth.
+FastAPI-сервис: принимает данные онбординг-формы, сохраняет в PostgreSQL, генерирует персональный роудмап через Groq, управляет пользователями через Google OAuth.
 
 ## Стек
 
-- Python 3.12 · FastAPI · SQLAlchemy 2 · PostgreSQL · Uvicorn
-- Groq API (llama-3.3-70b-versatile)
-- Google OAuth 2.0 · JWT (python-jose)
+Python 3.12, FastAPI, SQLAlchemy 2, PostgreSQL, Uvicorn, Groq API, python-jose
 
 ## Endpoints
 
 | Метод | URL | Описание |
 |-------|-----|----------|
-| `GET` | `/api/health` | Статус сервиса + проверка DB/Groq/Google |
-| `POST` | `/api/forms` | Сохранить данные онбординг-формы (анонимно) |
+| `GET` | `/api/health` | Статус сервиса, БД, Groq, Google |
+| `POST` | `/api/forms` | Сохранить данные формы (анонимно) |
 | `POST` | `/api/roadmap` | Сгенерировать роудмап через Groq |
-| `POST` | `/api/auth/google` | Google OAuth → JWT |
+| `POST` | `/api/share` | Создать публичную ссылку на роудмап |
+| `GET` | `/api/share/{id}` | Получить расшаренный роудмап |
+| `POST` | `/api/auth/google` | Авторизация через Google, возвращает JWT |
 | `GET` | `/api/me` | Профиль, роудмап, form_data, прогресс |
 | `PUT` | `/api/me/profile` | Обновить имя |
 | `PUT` | `/api/me/progress` | Сохранить выполненные этапы |
 | `POST` | `/api/me/roadmap` | Сохранить роудмап |
 | `POST` | `/api/me/save-form` | Сохранить данные формы |
-| `POST` | `/api/me/recalculate` | Обновить form_data + пересчитать роудмап |
+| `POST` | `/api/me/recalculate` | Обновить form_data и пересчитать роудмап |
 
 ## Локальный запуск
 
@@ -30,24 +30,40 @@ cd backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env          # заполнить DATABASE_URL и остальное
+cp .env.example .env
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
+
+## Тесты
+
+```bash
+cd backend
+source venv/bin/activate
+pytest tests/ -v
+```
+
+Тесты используют `FastAPI TestClient` с подменой зависимости базы данных (`FakeDb`). Реальная БД не нужна. Покрытие: health-endpoint, отправка формы с camelCase-полями, валидация диапазонов.
 
 ## Структура
 
 ```
 app/
-  main.py       — все endpoints, middleware, exception handler
-  models.py     — SQLAlchemy модели (UserForm, User)
-  schemas.py    — Pydantic схемы валидации
-  database.py   — подключение SQLAlchemy
+  main.py       — все endpoints, middleware, обработчик ошибок
+  models.py     — SQLAlchemy-модели (UserForm, User, SharedRoadmap)
+  schemas.py    — Pydantic-схемы валидации
+  database.py   — подключение через DATABASE_URL
   env.py        — загрузка .env
 sql/
   001_create_user_forms.sql
   002_create_users.sql
   003_alter_users_add_progress.sql
   004_alter_users_add_form_data.sql
+  005_alter_user_forms_add_schedule.sql
+  006_alter_user_forms_add_target_skills.sql
+  007_alter_user_forms_add_country.sql
+  008_create_shared_roadmaps.sql
+tests/
+  test_api.py   — тесты основных endpoints
 ```
 
 ## Production (systemd)
