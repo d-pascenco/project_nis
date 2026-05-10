@@ -10,6 +10,7 @@ import { ConstraintsStep } from "@/components/steps/ConstraintsStep";
 import { ScheduleStep } from "@/components/steps/ScheduleStep";
 import { RoadmapPreview } from "@/components/RoadmapPreview";
 import { RoadmapGenerating } from "@/components/RoadmapGenerating";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { RoadmapData, OnboardingFormData } from "@/types";
@@ -363,7 +364,7 @@ const Onboarding = () => {
             </div>
           </>
         ) : (
-          <>
+          <ErrorBoundary>
             <RoadmapPreview
               userData={{
                 fullName: formData.fullName || "Пользователь",
@@ -380,7 +381,7 @@ const Onboarding = () => {
                 Вернуться к редактированию
               </Button>
             </div>
-          </>
+          </ErrorBoundary>
         )}
       </main>
     </div>
