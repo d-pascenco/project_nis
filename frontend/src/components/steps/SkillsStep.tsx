@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Autocomplete } from "@/components/Autocomplete";
 import { LANGUAGES } from "@/lib/suggestions";
 import { Plus, X, BookOpen } from "lucide-react";
-import { Label } from "@/components/ui/label";
 import { Slider as SliderUI } from "@/components/ui/slider";
 
 interface SkillsStepProps {
